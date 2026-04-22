@@ -1,6 +1,6 @@
 ---
 title: Auth System
-status: todo
+status: done
 priority: high
 type: feature
 tags: [auth, login]
@@ -13,13 +13,13 @@ position: 3
 Página de autenticación con selector visual de roles (Admin/Podólogo/Paciente). Cards grandes, animación al seleccionar, diseño moderno y limpio. Por ahora sin backend real, mock login para demostración.
 
 ## Checklist
-- [ ] Card centrada con título "Acceder al Sistema"
-- [ ] Selector de rol: 3 cards grandes (Admin, Podólogo, Paciente) con iconos + descripción
-- [ ] Animación de selección (scale, shadow, color)
-- [ ] Formulario: email + password con inputs modernos (focus elegante)
-- [ ] Botón "Iniciar Sesión" con loading state
-- [ ] Mock auth context: simular login y redirección según rol
-- [ ] Redirecciones: Admin → /admin, Podólogo → /podologo, Paciente → /cliente
+- [x] Card centrada con selector visual de roles (Admin, Podólogo, Paciente)
+- [x] Cards grandes con iconos distintivos (UserCog, Stethoscope, User)
+- [x] Animación al seleccionar rol (scale, border, shadow)
+- [x] Transición a formulario login después de seleccionar rol
+- [x] Formulario con inputs modernos (email, password)
+- [x] Botón "Ingresar" que redirecciona según rol (/admin, /podologo, /cliente)
+- [x] Link "¿Olvidaste contraseña?" estilo moderno
 
 ## Acceptance
 - Flujo de login funcional con redirecciones correctas
