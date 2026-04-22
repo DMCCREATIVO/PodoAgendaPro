@@ -1,6 +1,6 @@
 ---
 title: Admin Panel
-status: todo
+status: in_progress
 priority: high
 type: feature
 tags: [admin, dashboard, management]
