@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Clock, Stethoscope, FileText, Star, Shield, TrendingUp, Award, ArrowRight, ArrowLeft, CheckCircle, User, Mail, Phone, MessageSquare } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const STEPS = [
   { number: 1, title: "Servicio", description: "Elige tu tratamiento" },
