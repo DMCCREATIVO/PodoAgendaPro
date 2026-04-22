@@ -19,17 +19,17 @@ Tipografía: Plus Jakarta Sans (headings, weights 600-700) + Inter (body, weight
 Estilo visual: soft shadows, bordes 16-24px, glassmorphism ligero, animaciones suaves, espaciado amplio.
 
 ## Checklist
-- [ ] Setup fonts (Plus Jakarta Sans headings, Inter body) en globals.css
-- [ ] Configurar paleta HSL en globals.css (--primary, --background, --foreground, --muted, --accent, --destructive)
-- [ ] Registrar colores custom + fuentes en tailwind.config.ts
-- [ ] Crear Navigation component (glassmorphism, logo, links, CTA)
-- [ ] Hero section: imagen profesional clínica, título, subtítulo, botón grande "Agendar Hora"
-- [ ] Servicios section: 4-6 cards con iconos Lucide + título + descripción breve
-- [ ] Podólogos section: 2-3 cards con foto, nombre, especialidad
-- [ ] Beneficios section: grid 2x2 o 3x2 con iconos + texto
-- [ ] Testimonios section: 3 cards con avatar circular + nombre + testimonio
-- [ ] CTA final section: título + botón grande con hover moderno
-- [ ] Footer component: links, redes, copyright
+- [x] Setup fonts (Plus Jakarta Sans headings, Inter body) en globals.css
+- [x] Configurar paleta HSL en globals.css (--primary, --background, --foreground, --muted, --accent, --destructive)
+- [x] Registrar colores custom + fuentes en tailwind.config.ts
+- [x] Crear Navigation component (glassmorphism, logo, links, CTA)
+- [x] Hero section: imagen profesional clínica, título, subtítulo, botón grande "Agendar Hora"
+- [x] Servicios section: 4-6 cards con iconos Lucide + título + descripción breve
+- [x] Podólogos section: 2-3 cards con foto, nombre, especialidad
+- [x] Beneficios section: grid 2x2 o 3x2 con iconos + texto
+- [x] Testimonios section: 3 cards con avatar circular + nombre + testimonio
+- [x] CTA final section: título + botón grande con hover moderno
+- [x] Footer component: links, redes, copyright
 
 ## Acceptance
 - Landing se ve premium, moderno, profesional — nivel SaaS empresarial
