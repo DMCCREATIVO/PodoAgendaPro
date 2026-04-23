@@ -37,18 +37,6 @@ export default function SuperAdmin() {
   const { loading, authorized } = useAuthGuard("superadmin");
   const activeTab = (router.query.tab as string) || "dashboard";
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
-      </div>
-    );
-  }
-
-  if (!authorized) {
-    return null;
-  }
-
   const [stats, setStats] = useState<any>(null);
   const [companies, setCompanies] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -60,8 +48,10 @@ export default function SuperAdmin() {
   const [userModal, setUserModal] = useState({ open: false, user: null as any });
 
   useEffect(() => {
-    loadData();
-  }, [activeTab]);
+    if (authorized && !loading) {
+      loadData();
+    }
+  }, [activeTab, authorized, loading]);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -137,6 +127,18 @@ export default function SuperAdmin() {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
+
+  if (!authorized) {
+    return null;
+  }
 
   return (
     <SuperAdminLayout activeTab={activeTab}>
