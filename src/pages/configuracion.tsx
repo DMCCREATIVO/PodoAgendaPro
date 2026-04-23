@@ -62,6 +62,8 @@ export default function Configuracion() {
   });
 
   const [settingsForm, setSettingsForm] = useState({
+    allow_patient_login: true,
+    allow_public_registration: false,
     booking_enabled: true,
     requires_approval: false,
     auto_reminders: true,
@@ -121,6 +123,8 @@ export default function Configuracion() {
         });
 
         setSettingsForm({
+          allow_patient_login: settings.allow_patient_login ?? true,
+          allow_public_registration: settings.allow_public_registration ?? false,
           booking_enabled: settings.booking_enabled ?? true,
           requires_approval: settings.requires_approval ?? false,
           auto_reminders: settings.auto_reminders ?? true,
@@ -943,6 +947,39 @@ export default function Configuracion() {
                       </p>
                     </div>
                   )}
+                </div>
+
+                <Separator />
+
+                {/* Ajustes Tab - Add new settings */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold">Control de Acceso</h3>
+                  
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30">
+                    <div className="flex-1">
+                      <p className="font-medium">Permitir Login de Pacientes</p>
+                      <p className="text-sm text-muted-foreground">
+                        Los pacientes pueden iniciar sesión en su portal
+                      </p>
+                    </div>
+                    <Switch
+                      checked={settingsForm.allow_patient_login}
+                      onCheckedChange={(checked) => setSettingsForm({ ...settingsForm, allow_patient_login: checked })}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30">
+                    <div className="flex-1">
+                      <p className="font-medium">Registro Público de Pacientes</p>
+                      <p className="text-sm text-muted-foreground">
+                        Pacientes nuevos pueden crear su propia cuenta
+                      </p>
+                    </div>
+                    <Switch
+                      checked={settingsForm.allow_public_registration}
+                      onCheckedChange={(checked) => setSettingsForm({ ...settingsForm, allow_public_registration: checked })}
+                    />
+                  </div>
                 </div>
 
                 <Separator />
