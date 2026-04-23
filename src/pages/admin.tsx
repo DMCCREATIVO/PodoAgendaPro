@@ -75,6 +75,44 @@ const APPOINTMENT_TRENDS = {
   },
 };
 
+const MOCK_PATIENTS = [
+  { id: 1, name: "Ana Silva", email: "ana@email.com", phone: "+56912345678", lastVisit: "2026-04-15", totalVisits: 3, balance: 0 },
+  { id: 2, name: "Carlos López", email: "carlos@email.com", phone: "+56987654321", lastVisit: "2026-04-10", totalVisits: 1, balance: 25000 },
+  { id: 3, name: "María González", email: "maria@email.com", phone: "+56911223344", lastVisit: "2026-03-20", totalVisits: 5, balance: 0 },
+];
+
+const MOCK_PODIATRISTS = [
+  { id: 1, name: "Dra. Elena Rojas", specialty: "Podología Clínica", active: true, email: "elena@podos.cl", phone: "+56911111111" },
+  { id: 2, name: "Dr. Roberto Méndez", specialty: "Pie Diabético", active: true, email: "roberto@podos.cl", phone: "+56922222222" },
+  { id: 3, name: "Dra. Carmen Paz", specialty: "Cirugía Menor", active: false, email: "carmen@podos.cl", phone: "+56933333333" },
+];
+
+const MOCK_APPOINTMENTS = [
+  { id: 1, time: "09:00", patient: "Ana Silva", service: "Consulta Podológica", podiatrist: "Dra. Elena Rojas", status: "confirmed" },
+  { id: 2, time: "10:30", patient: "Carlos López", service: "Quiropodia", podiatrist: "Dr. Roberto Méndez", status: "scheduled" },
+  { id: 3, time: "11:00", patient: "María González", service: "Plantillas", podiatrist: "Dra. Elena Rojas", status: "in_progress" },
+];
+
+const STATUS_CONFIG = {
+  scheduled: { label: "Agendada", color: "bg-blue-100 text-blue-700 border-blue-200" },
+  confirmed: { label: "Confirmada", color: "bg-green-100 text-green-700 border-green-200" },
+  in_progress: { label: "En Atención", color: "bg-orange-100 text-orange-700 border-orange-200" },
+  completed: { label: "Completada", color: "bg-accent/10 text-accent border-accent/20" },
+  cancelled: { label: "Cancelada", color: "bg-red-100 text-red-700 border-red-200" },
+  no_show: { label: "No asiste", color: "bg-gray-100 text-gray-700 border-gray-200" },
+};
+
+const MOCK_PAYMENTS = [
+  { id: 1, date: "2026-04-20", patient: "Ana Silva", service: "Consulta Podológica", method: "Tarjeta", amount: 25000, status: "paid" },
+  { id: 2, date: "2026-04-21", patient: "Carlos López", service: "Plantillas", method: "Transferencia", amount: 45000, status: "pending" },
+];
+
+const PAYMENT_STATUS = {
+  paid: { label: "Pagado", color: "bg-green-100 text-green-700 border-green-200" },
+  pending: { label: "Pendiente", color: "bg-yellow-100 text-yellow-700 border-yellow-200" },
+  cancelled: { label: "Cancelado", color: "bg-red-100 text-red-700 border-red-200" },
+};
+
 export default function Admin() {
   const router = useRouter();
   const activeTab = (router.query.tab as string) || "dashboard";
