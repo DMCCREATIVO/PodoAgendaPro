@@ -1,4 +1,4 @@
-<![CDATA[import { useState } from "react";
+import { useState } from "react";
 import { useCompany } from "@/contexts/CompanyContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -122,4 +122,3 @@ export function CompanySwitcher() {
     </DropdownMenu>
   );
 }
-</file_contents>

@@ -1,4 +1,4 @@
-<![CDATA[import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useRouter } from "next/router";
 import { companyService } from "@/services/companyService";
 import type { Database } from "@/integrations/supabase/types";
@@ -97,4 +97,3 @@ export function useCompany() {
   }
   return context;
 }
-</file_contents>

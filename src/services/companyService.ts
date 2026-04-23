@@ -1,4 +1,4 @@
-<![CDATA[import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
@@ -16,7 +16,7 @@ export const companyService = {
    */
   async getUserCompanies(): Promise<Company[]> {
     const { data: session } = await supabase.auth.getSession();
-    if (!session.session) throw new Error("No authenticated");
+    if (!session?.session) throw new Error("No authenticated");
 
     const { data, error } = await supabase
       .from("company_users")
@@ -118,7 +118,7 @@ export const companyService = {
    */
   async getUserRole(companyId: string): Promise<string | null> {
     const { data: session } = await supabase.auth.getSession();
-    if (!session.session) return null;
+    if (!session?.session) return null;
 
     const { data, error } = await supabase
       .from("company_users")
@@ -145,7 +145,7 @@ export const companyService = {
     action: string
   ): Promise<boolean> {
     const { data: session } = await supabase.auth.getSession();
-    if (!session.session) return false;
+    if (!session?.session) return false;
 
     const { data, error } = await supabase
       .from("company_users")
@@ -199,7 +199,7 @@ export const companyService = {
     role: "admin" | "employee" | "viewer"
   ): Promise<void> {
     const { data: session } = await supabase.auth.getSession();
-    if (!session.session) throw new Error("No authenticated");
+    if (!session?.session) throw new Error("No authenticated");
 
     // Aquí se enviaría un email de invitación
     // Por ahora solo creamos el registro pending
@@ -314,4 +314,3 @@ export const companyService = {
     };
   },
 };
-</file_contents>
