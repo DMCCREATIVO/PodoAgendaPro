@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { useRouter } from "next/router";
 import { companyService } from "@/services/companyService";
 import type { Database } from "@/integrations/supabase/types";
-import { supabase } from "@/integrations/supabase/supabase";
+import { supabase } from "@/integrations/supabase/client";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
