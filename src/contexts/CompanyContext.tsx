@@ -26,22 +26,29 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   // Cargar empresas del usuario
   const loadCompanies = async () => {
     try {
-      setIsLoading(true);
-      const userCompanies = await companyService.getUserCompanies();
-      setCompanies(userCompanies);
+      const companies = await companyService.getUserCompanies();
+      setAvailableCompanies(companies);
 
-      // Si hay empresas y no hay una seleccionada, seleccionar la primera
-      if (userCompanies.length > 0 && !currentCompany) {
-        const savedCompanyId = localStorage.getItem("currentCompanyId");
-        const companyToSelect =
-          userCompanies.find((c) => c.id === savedCompanyId) ||
-          userCompanies[0];
-        await selectCompany(companyToSelect);
+      // Set current company from localStorage or first available
+      const stored = localStorage.getItem("currentCompanyId");
+      if (stored) {
+        const found = companies.find((c) => c.id === stored);
+        if (found) {
+          setCurrentCompany(found);
+          return;
+        }
+      }
+
+      // Default to first company if available
+      if (companies.length > 0) {
+        setCurrentCompany(companies[0]);
+        localStorage.setItem("currentCompanyId", companies[0].id);
       }
     } catch (error) {
       console.error("Error loading companies:", error);
-    } finally {
-      setIsLoading(false);
+      // Don't throw - just set empty state for public pages
+      setAvailableCompanies([]);
+      setCurrentCompany(null);
     }
   };
 

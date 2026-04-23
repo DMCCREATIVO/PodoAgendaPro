@@ -16,7 +16,7 @@ export const companyService = {
    */
   async getUserCompanies(): Promise<Company[]> {
     const { data: session } = await supabase.auth.getSession();
-    if (!session?.session) throw new Error("No authenticated");
+    if (!session?.session) return []; // Return empty array for unauthenticated users
 
     const { data, error } = await supabase
       .from("company_users")
