@@ -159,7 +159,7 @@ export default function Home() {
       name: "Dra. Ana Martínez",
       specialty: "Podología Deportiva",
       avatar: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400",
-      rating: 4.9,
+      rating: 5,
       patients: 250,
       content: "PodoAgenda Pro transformó completamente mi práctica. Ahora puedo ver 40% más pacientes sin sacrificar calidad de atención.",
     }
