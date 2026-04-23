@@ -9,6 +9,7 @@ interface CompanyContextType {
   setCurrentCompany: (company: Company) => void;
   isLoading: boolean;
   userRole: string | null;
+  switchCompany: (companyId: string) => void;
 }
 
 const CompanyContext = createContext<CompanyContextType | undefined>(undefined);
@@ -30,6 +31,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         setCurrentCompany: () => {},
         isLoading,
         userRole,
+        switchCompany: () => {},
       }}
     >
       {children}
