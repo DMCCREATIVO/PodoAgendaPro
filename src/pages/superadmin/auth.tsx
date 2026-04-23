@@ -23,23 +23,32 @@ export default function SuperAdminAuth() {
     setLoading(true);
 
     try {
-      // First, try to login
-      const { data, error } = await supabase.auth.signInWithPassword({
+      console.log("🔐 Intentando login SuperAdmin con:", loginForm.email);
+
+      // Primero verificar si el usuario existe
+      const { data: users, error: userCheckError } = await supabase
+        .from("auth.users")
+        .select("email, raw_user_meta_data")
+        .eq("email", loginForm.email)
+        .limit(1);
+
+      console.log("👤 Usuario en BD:", users, userCheckError);
+
+      // Intentar login
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: loginForm.email,
         password: loginForm.password,
       });
 
-      if (error) {
-        // If user doesn't exist and is the superadmin email, create it
-        if (error.message.includes("Invalid login credentials") && 
+      if (authError) {
+        console.error("❌ Error de login:", authError);
+        
+        // Si el usuario no existe y es el email de superadmin, créalo
+        if (authError.message.includes("Invalid login credentials") && 
             loginForm.email === "superadmin@podoagenda.com") {
           
-          toast({
-            title: "Creando usuario SuperAdmin",
-            description: "Primera vez, creando cuenta...",
-          });
-
-          // Create superadmin user
+          console.log("🆕 Creando usuario SuperAdmin...");
+          
           const { data: signupData, error: signupError } = await supabase.auth.signUp({
             email: loginForm.email,
             password: loginForm.password,
@@ -48,48 +57,58 @@ export default function SuperAdminAuth() {
                 is_superadmin: true,
                 full_name: "Super Administrator",
               },
+              emailRedirectTo: `${window.location.origin}/superadmin`,
             },
           });
 
-          if (signupError) throw signupError;
+          if (signupError) {
+            console.error("❌ Error al crear SuperAdmin:", signupError);
+            throw signupError;
+          }
+
+          console.log("✅ SuperAdmin creado:", signupData);
 
           toast({
-            title: "SuperAdmin creado",
+            title: "✅ SuperAdmin creado",
             description: "Iniciando sesión...",
           });
 
-          // Login with newly created account
-          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
-            email: loginForm.email,
-            password: loginForm.password,
-          });
-
-          if (loginError) throw loginError;
-          
-          router.push("/superadmin");
+          // Esperar un momento y recargar
+          setTimeout(() => {
+            window.location.href = "/superadmin";
+          }, 1000);
           return;
         }
         
-        throw error;
+        throw authError;
       }
 
-      // Verify is superadmin
-      const isSuperadmin = data.user?.user_metadata?.is_superadmin === true;
+      console.log("✅ Login exitoso:", authData);
+
+      // Verificar metadata
+      const isSuperadmin = authData.user?.user_metadata?.is_superadmin === true;
+      console.log("👑 Es SuperAdmin?", isSuperadmin, authData.user?.user_metadata);
 
       if (!isSuperadmin) {
+        console.error("❌ Usuario no es SuperAdmin");
         await supabase.auth.signOut();
         throw new Error("Acceso denegado. Solo SuperAdmins pueden acceder.");
       }
 
       toast({
-        title: "Acceso concedido",
+        title: "✅ Acceso concedido",
         description: "Bienvenido, SuperAdmin",
       });
 
-      router.push("/superadmin");
+      console.log("🚀 Redirigiendo a /superadmin...");
+      
+      // Usar window.location para forzar recarga completa
+      window.location.href = "/superadmin";
+
     } catch (error: any) {
+      console.error("💥 Error completo:", error);
       toast({
-        title: "Error de autenticación",
+        title: "❌ Error de autenticación",
         description: error.message,
         variant: "destructive",
       });
@@ -123,48 +142,61 @@ export default function SuperAdminAuth() {
             <Label htmlFor="email" className="text-sm font-medium">
               Email del SuperAdmin
             </Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="superadmin@podoagenda.com"
-              value={loginForm.email}
-              onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
-              className="h-12 rounded-xl border-purple-500/20 focus:border-purple-500"
-              required
-            />
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="superadmin@podoagenda.com"
+                value={loginForm.email}
+                onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
+                className="h-12 pl-10 rounded-xl border-purple-500/20 focus:border-purple-500"
+                required
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password" className="flex items-center gap-2">
-              <Lock className="w-4 h-4 text-purple-600" />
+            <Label htmlFor="password" className="text-sm font-medium">
               Contraseña
             </Label>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              value={loginForm.password}
-              onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-              required
-              className="border-purple-200 focus:border-purple-600 focus:ring-purple-600"
-            />
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••••••"
+                value={loginForm.password}
+                onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                className="h-12 pl-10 rounded-xl border-purple-500/20 focus:border-purple-500"
+                required
+              />
+            </div>
           </div>
 
           <Button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg"
+            className="w-full h-12 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-xl shadow-lg transition-all"
           >
-            {loading ? "Verificando..." : "Acceder al Sistema"}
+            {loading ? (
+              <div className="flex items-center gap-2">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                <span>Verificando acceso...</span>
+              </div>
+            ) : (
+              "Acceder al Sistema"
+            )}
           </Button>
         </form>
 
-        {/* Security Notice */}
-        <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-          <p className="text-xs text-purple-900 text-center">
-            <Shield className="w-3 h-3 inline mr-1" />
-            Acceso restringido. Solo usuarios con permisos de SuperAdmin pueden acceder.
-          </p>
+        <div className="mt-8 pt-6 border-t border-border">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Shield className="w-4 h-4" />
+            <p>
+              Área restringida. Solo usuarios autorizados con permisos de SuperAdmin pueden acceder.
+            </p>
+          </div>
         </div>
       </Card>
     </div>

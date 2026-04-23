@@ -8,67 +8,86 @@ export function useAuthGuard(requiredRole?: string) {
   const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
-    let isMounted = true;
+    let isActive = true;
 
     const checkAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        console.log(`🔍 AuthGuard: Verificando acceso para rol "${requiredRole}"...`);
 
-        if (!isMounted) return;
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError) {
+          console.error("❌ Error obteniendo sesión:", sessionError);
+          throw sessionError;
+        }
+
+        if (!isActive) return;
 
         if (!session) {
-          // Not authenticated - redirect to appropriate login
+          console.log("❌ No hay sesión activa, redirigiendo...");
           if (requiredRole === "superadmin") {
-            router.push("/superadmin/auth");
+            router.replace("/superadmin/auth");
           } else {
-            router.push("/auth");
+            router.replace("/auth");
           }
           setLoading(false);
           setAuthorized(false);
           return;
         }
 
+        console.log("✅ Sesión activa:", session.user.email);
+        console.log("👤 User metadata:", session.user.user_metadata);
+
         // Check SuperAdmin
         const isSuperadmin = session.user.user_metadata?.is_superadmin === true;
+        console.log("👑 Es SuperAdmin?", isSuperadmin);
 
         if (requiredRole === "superadmin") {
-          // Checking superadmin panel access
           if (!isSuperadmin) {
-            router.push("/superadmin/auth");
+            console.log("❌ Usuario no es SuperAdmin, redirigiendo...");
+            router.replace("/superadmin/auth");
             setLoading(false);
             setAuthorized(false);
             return;
           }
-          // Is superadmin and accessing superadmin panel - AUTHORIZED
+          console.log("✅ SuperAdmin verificado, acceso concedido");
           setAuthorized(true);
           setLoading(false);
           return;
         }
 
-        // If superadmin tries to access non-superadmin routes, redirect to superadmin panel
+        // If superadmin tries to access non-superadmin routes
         if (isSuperadmin && requiredRole !== "superadmin") {
-          router.push("/superadmin");
+          console.log("⚠️ SuperAdmin intentando acceder a panel normal, redirigiendo a /superadmin");
+          router.replace("/superadmin");
           setLoading(false);
           setAuthorized(false);
           return;
         }
 
         // Regular user - check company membership
-        const { data: companyUser } = await supabase
+        const { data: companyUser, error: companyError } = await supabase
           .from("company_users")
           .select("role")
           .eq("user_id", session.user.id)
           .limit(1)
           .single();
 
-        if (!isMounted) return;
+        if (companyError) {
+          console.error("❌ Error verificando membresía:", companyError);
+        }
+
+        if (!isActive) return;
 
         if (!companyUser) {
-          router.push("/auth");
+          console.log("❌ Usuario sin empresa, redirigiendo a /auth");
+          router.replace("/auth");
           setLoading(false);
           setAuthorized(false);
           return;
         }
+
+        console.log("✅ Usuario de empresa con rol:", companyUser.role);
 
         // Check role matches
         if (requiredRole) {
@@ -82,13 +101,14 @@ export function useAuthGuard(requiredRole?: string) {
           const allowed = allowedRoles[requiredRole]?.includes(userRole);
 
           if (!allowed) {
+            console.log(`❌ Rol ${userRole} no tiene permiso para ${requiredRole}`);
             // Redirect to correct panel
             if (userRole === "owner" || userRole === "admin") {
-              router.push("/admin");
+              router.replace("/admin");
             } else if (userRole === "podiatrist" || userRole === "staff") {
-              router.push("/podologo");
+              router.replace("/podologo");
             } else if (userRole === "patient") {
-              router.push("/cliente");
+              router.replace("/cliente");
             }
             setLoading(false);
             setAuthorized(false);
@@ -96,12 +116,13 @@ export function useAuthGuard(requiredRole?: string) {
           }
         }
 
+        console.log("✅ Autorizado para acceder");
         setAuthorized(true);
         setLoading(false);
       } catch (error) {
-        console.error("Auth guard error:", error);
-        if (isMounted) {
-          router.push("/auth");
+        console.error("💥 Error en authGuard:", error);
+        if (isActive) {
+          router.replace("/auth");
           setLoading(false);
           setAuthorized(false);
         }
@@ -111,9 +132,9 @@ export function useAuthGuard(requiredRole?: string) {
     checkAuth();
 
     return () => {
-      isMounted = false;
+      isActive = false;
     };
-  }, []); // Solo ejecutar una vez al montar
+  }, []);
 
   return { loading, authorized };
 }
