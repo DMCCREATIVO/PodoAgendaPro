@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Calendar, FileText, CreditCard, LogOut, Menu, X, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 interface PatientLayoutProps {
   children: ReactNode;
@@ -18,6 +19,7 @@ const NAV_ITEMS = [
 
 export function PatientLayout({ children, activeTab }: PatientLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-muted/20">
