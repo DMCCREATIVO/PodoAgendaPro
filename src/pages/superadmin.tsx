@@ -25,12 +25,16 @@ export default function SuperAdmin() {
   const isDemoMode = router.query.demo === "true";
 
   useEffect(() => {
+    let isMounted = true;
+
     const checkAuth = async () => {
       // If demo mode, skip auth check
       if (isDemoMode) {
         console.log("🎭 DEMO MODE ACTIVE - Bypassing authentication");
-        setAuthorized(true);
-        setLoading(false);
+        if (isMounted) {
+          setAuthorized(true);
+          setLoading(false);
+        }
         return;
       }
 
@@ -40,9 +44,6 @@ export default function SuperAdmin() {
         // Obtener sesión
         const { data: { session }, error } = await supabase.auth.getSession();
         
-        console.log("Sesión:", session ? "✅ Existe" : "❌ No existe");
-        console.log("Error:", error);
-
         if (!isMounted) return;
 
         // Si no hay sesión → redirigir
@@ -56,18 +57,11 @@ export default function SuperAdmin() {
         const metadata = session.user.user_metadata || {};
         const isSuperadmin = metadata.is_superadmin === true || metadata.is_superadmin === "true";
         
-        console.log("Metadata:", metadata);
-        console.log("is_superadmin:", metadata.is_superadmin);
-        console.log("Es SuperAdmin:", isSuperadmin);
-
         if (!isSuperadmin) {
           console.log("→ Redirigiendo a /superadmin/auth (no es superadmin)");
           router.replace("/superadmin/auth");
           return;
         }
-
-        console.log("✅ ACCESO AUTORIZADO");
-        console.log("==============================");
         
         if (isMounted) {
           setAuthorized(true);
@@ -87,7 +81,7 @@ export default function SuperAdmin() {
     return () => {
       isMounted = false;
     };
-  }, [router]);
+  }, [router, isDemoMode]);
 
   if (loading) {
     return (
@@ -101,7 +95,7 @@ export default function SuperAdmin() {
   }
 
   if (!authorized) {
-    return null; // Redirigiendo...
+    return null;
   }
 
   return (
