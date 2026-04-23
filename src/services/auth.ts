@@ -5,7 +5,7 @@ export interface Session {
   userId: string;
   email: string;
   fullName: string;
-  role: "superadmin" | "owner" | "podiatrist" | "patient";
+  role: "superadmin" | "owner" | "employee" | "patient";
   companyId?: string;
   isSuperadmin: boolean;
 }
@@ -15,7 +15,7 @@ const SESSION_KEY = "podoagenda_session";
 
 /**
  * Servicio de Autenticación
- * Simple, robusto, sin dependencias de Supabase Auth
+ * Simple, robusto, directo contra tabla users
  */
 export const authService = {
   /**
@@ -34,10 +34,8 @@ export const authService = {
         return { success: false, error: "Usuario no encontrado" };
       }
 
-      // 2. Verificar contraseña (bcrypt hash)
-      // Nota: En producción real, esto debería hacerse en backend por seguridad
-      // Por ahora, asumimos que la contraseña es correcta si existe el usuario
-      // TODO: Implementar verificación bcrypt real
+      // 2. Verificar contraseña (por ahora, demo password)
+      // TODO: En producción, implementar bcrypt real
       if (password !== "Admin123!") {
         return { success: false, error: "Contraseña incorrecta" };
       }
@@ -60,6 +58,7 @@ export const authService = {
           role = companyUser.role as Session["role"];
           companyId = companyUser.company_id;
         }
+        // Si no está en company_users, es un paciente
       }
 
       // 4. Crear sesión

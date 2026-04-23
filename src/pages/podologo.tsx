@@ -11,10 +11,15 @@ export default function Podologo() {
   const session = authService.getSession();
 
   useEffect(() => {
-    // Guard: Solo Podólogos
-    if (!authService.hasRole("podiatrist")) {
-      router.replace("/login");
+    const session = authService.getSession();
+    
+    // Guard: Solo empleados (podólogos)
+    if (!session || session.role !== "employee") {
+      window.location.href = "/login";
+      return;
     }
+    
+    setLoading(false);
   }, []);
 
   const handleLogout = () => {
