@@ -10,12 +10,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { 
   Building2, 
   Users, 
-  Calendar,
+  TrendingUp, 
   Shield,
   CheckCircle2,
   XCircle,
   Search,
-  TrendingUp,
 } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { authService } from "@/services/authService";
@@ -26,6 +25,7 @@ export default function SuperAdmin() {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("dashboard");
   
   const [stats, setStats] = useState<any>(null);
@@ -39,13 +39,14 @@ export default function SuperAdmin() {
   }, []);
 
   useEffect(() => {
-    if (!loading) {
+    if (currentUser && !loading) {
       loadData();
     }
-  }, [activeTab, loading]);
+  }, [activeTab, currentUser, loading]);
 
   const checkAuth = async () => {
     try {
+      // Verificación SUPER SIMPLE - solo localStorage
       const user = await authService.getCurrentUser();
       
       if (!user || user.email !== "superadmin@demo.com") {
@@ -53,8 +54,10 @@ export default function SuperAdmin() {
         return;
       }
       
+      setCurrentUser(user);
       setLoading(false);
     } catch (err) {
+      console.error("Error auth:", err);
       router.replace("/superadmin/auth");
     }
   };
@@ -141,7 +144,7 @@ export default function SuperAdmin() {
       <div className="min-h-screen bg-gradient-to-br from-purple-500/10 via-background to-purple-600/10 flex items-center justify-center">
         <div className="text-center">
           <Shield className="w-16 h-16 mx-auto mb-4 text-purple-600 animate-pulse" />
-          <p className="text-muted-foreground">Verificando acceso...</p>
+          <p className="text-muted-foreground">Cargando panel...</p>
         </div>
       </div>
     );
@@ -165,7 +168,7 @@ export default function SuperAdmin() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold">Panel de Control Global</h1>
-            <p className="text-muted-foreground">Administración del sistema PodoAgenda Pro</p>
+            <p className="text-muted-foreground">Bienvenido, {currentUser?.full_name || currentUser?.email}</p>
           </div>
           <Button variant="outline" onClick={handleLogout}>
             Cerrar Sesión
@@ -209,7 +212,7 @@ export default function SuperAdmin() {
               <Card className="p-6">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-purple-500/10 rounded-lg">
-                    <Calendar className="w-6 h-6 text-purple-600" />
+                    <TrendingUp className="w-6 h-6 text-purple-600" />
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Citas Totales</p>
@@ -221,7 +224,7 @@ export default function SuperAdmin() {
               <Card className="p-6">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-orange-500/10 rounded-lg">
-                    <TrendingUp className="w-6 h-6 text-orange-600" />
+                    <Users className="w-6 h-6 text-orange-600" />
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Pacientes</p>
@@ -249,10 +252,10 @@ export default function SuperAdmin() {
                       <TableCell className="font-medium">{company.name}</TableCell>
                       <TableCell className="text-muted-foreground">{company.slug}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">{company.plan_id || 'N/A'}</Badge>
+                        <Badge variant="outline">{company.plan_id || "N/A"}</Badge>
                       </TableCell>
                       <TableCell>
-                        {company.status === 'active' ? (
+                        {company.status === "active" ? (
                           <Badge className="bg-green-500/10 text-green-700 hover:bg-green-500/20">
                             <CheckCircle2 className="w-3 h-3 mr-1" />
                             Activo
@@ -302,7 +305,7 @@ export default function SuperAdmin() {
                       <TableCell className="font-medium">{company.name}</TableCell>
                       <TableCell className="text-muted-foreground">{company.slug}</TableCell>
                       <TableCell>
-                        {company.status === 'active' ? (
+                        {company.status === "active" ? (
                           <Badge className="bg-green-500/10 text-green-700">Activo</Badge>
                         ) : (
                           <Badge variant="destructive">Suspendido</Badge>
@@ -312,10 +315,10 @@ export default function SuperAdmin() {
                       <TableCell>
                         <Button
                           size="sm"
-                          variant={company.status === 'active' ? 'destructive' : 'default'}
+                          variant={company.status === "active" ? "destructive" : "default"}
                           onClick={() => handleSuspendCompany(company.id, company.status)}
                         >
-                          {company.status === 'active' ? 'Suspender' : 'Activar'}
+                          {company.status === "active" ? "Suspender" : "Activar"}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -351,7 +354,7 @@ export default function SuperAdmin() {
                 <TableBody>
                   {filteredUsers.map((user) => (
                     <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.full_name || 'Sin nombre'}</TableCell>
+                      <TableCell className="font-medium">{user.full_name || "Sin nombre"}</TableCell>
                       <TableCell>{user.email}</TableCell>
                       <TableCell>
                         {user.is_superadmin ? (
@@ -364,13 +367,13 @@ export default function SuperAdmin() {
                         )}
                       </TableCell>
                       <TableCell>
-                        {user.email !== 'superadmin@demo.com' && (
+                        {user.email !== "superadmin@demo.com" && (
                           <Button
                             size="sm"
-                            variant={user.is_superadmin ? 'destructive' : 'default'}
+                            variant={user.is_superadmin ? "destructive" : "default"}
                             onClick={() => handleMakeSuperAdmin(user.id, user.is_superadmin)}
                           >
-                            {user.is_superadmin ? 'Quitar SuperAdmin' : 'Hacer SuperAdmin'}
+                            {user.is_superadmin ? "Quitar SuperAdmin" : "Hacer SuperAdmin"}
                           </Button>
                         )}
                       </TableCell>
@@ -383,32 +386,11 @@ export default function SuperAdmin() {
 
           <TabsContent value="auditoria" className="space-y-4">
             <Card>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Usuario</TableHead>
-                    <TableHead>Acción</TableHead>
-                    <TableHead>Detalles</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {auditLog.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {new Date(log.created_at).toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-sm">{log.user_email}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{log.action}</Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {log.details || '-'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="p-6">
+                <p className="text-muted-foreground text-center">
+                  Registro de auditoría en desarrollo
+                </p>
+              </div>
             </Card>
           </TabsContent>
         </Tabs>
