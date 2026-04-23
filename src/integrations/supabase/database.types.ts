@@ -340,8 +340,11 @@ export type Database = {
           plan_status: string | null
           settings: Json | null
           slug: string
+          status: string | null
           subscription_ends_at: string | null
           subscription_started_at: string | null
+          suspended_at: string | null
+          suspended_reason: string | null
           timezone: string | null
           trial_ends_at: string | null
           updated_at: string | null
@@ -364,8 +367,11 @@ export type Database = {
           plan_status?: string | null
           settings?: Json | null
           slug: string
+          status?: string | null
           subscription_ends_at?: string | null
           subscription_started_at?: string | null
+          suspended_at?: string | null
+          suspended_reason?: string | null
           timezone?: string | null
           trial_ends_at?: string | null
           updated_at?: string | null
@@ -388,8 +394,11 @@ export type Database = {
           plan_status?: string | null
           settings?: Json | null
           slug?: string
+          status?: string | null
           subscription_ends_at?: string | null
           subscription_started_at?: string | null
+          suspended_at?: string | null
+          suspended_reason?: string | null
           timezone?: string | null
           trial_ends_at?: string | null
           updated_at?: string | null
@@ -690,6 +699,93 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      superadmin_actions: {
+        Row: {
+          action_type: string
+          admin_id: string
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          target_company_id: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          admin_id: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          target_company_id?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          admin_id?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          target_company_id?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "superadmin_actions_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "superadmin_actions_target_company_id_fkey"
+            columns: ["target_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "superadmin_actions_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      system_settings: {
+        Row: {
+          description: string | null
+          id: string
+          key: string
+          updated_at: string | null
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value: Json
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string | null
+          updated_by?: string | null
+          value?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
