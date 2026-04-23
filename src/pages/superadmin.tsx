@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import { supabase } from "@/integrations/supabase/client";
 import { SuperAdminLayout } from "@/components/superadmin/SuperAdminLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,14 +30,14 @@ import {
 import { cn } from "@/lib/utils";
 import { superadminService } from "@/services/superadminService";
 import { useToast } from "@/hooks/use-toast";
-import { useAuthGuard } from "@/middleware/authGuard";
 
 export default function SuperAdmin() {
   const router = useRouter();
   const { toast } = useToast();
-  const { loading, authorized } = useAuthGuard("superadmin");
   const activeTab = (router.query.tab as string) || "dashboard";
 
+  const [loading, setLoading] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
   const [stats, setStats] = useState<any>(null);
   const [companies, setCompanies] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -47,11 +48,56 @@ export default function SuperAdmin() {
   const [companyModal, setCompanyModal] = useState({ open: false, company: null as any });
   const [userModal, setUserModal] = useState({ open: false, user: null as any });
 
+  // Check auth ONCE on mount
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  // Load data when authorized and tab changes
   useEffect(() => {
     if (authorized && !loading) {
       loadData();
     }
   }, [activeTab, authorized, loading]);
+
+  const checkAuth = async () => {
+    try {
+      console.log("🛡️ Verificando acceso SuperAdmin...");
+      
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        console.log("❌ No hay sesión, redirigiendo a login");
+        router.replace("/superadmin/auth");
+        return;
+      }
+
+      console.log("✅ Sesión encontrada:", session.user.email);
+      console.log("📝 Metadata:", session.user.user_metadata);
+
+      // Check if user is superadmin (handle multiple formats)
+      const isSuperadmin = 
+        session.user.user_metadata?.is_superadmin === true || 
+        session.user.user_metadata?.is_superadmin === "true" ||
+        session.user.user_metadata?.is_superadmin === 1 ||
+        session.user.user_metadata?.is_superadmin === "1";
+
+      console.log("👑 Es SuperAdmin?", isSuperadmin);
+
+      if (!isSuperadmin) {
+        console.log("❌ No es SuperAdmin, redirigiendo");
+        router.replace("/superadmin/auth");
+        return;
+      }
+
+      console.log("✅ SuperAdmin verificado, mostrando panel");
+      setAuthorized(true);
+      setLoading(false);
+    } catch (error) {
+      console.error("💥 Error verificando auth:", error);
+      router.replace("/superadmin/auth");
+    }
+  };
 
   const loadData = async () => {
     setIsLoading(true);
@@ -131,7 +177,10 @@ export default function SuperAdmin() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+          <p className="text-muted-foreground">Verificando acceso...</p>
+        </div>
       </div>
     );
   }
