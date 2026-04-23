@@ -28,7 +28,7 @@ El sistema tiene **3 puntos de entrada separados**:
 ### **Cómo Acceder:**
 1. Ir a: `/superadmin/auth`
 2. Verás: Login simple morado (NO hay selector de roles)
-3. Email: `superadmin@podoagenda.com`
+3. Email: `superadmin@podospro.com`
 4. Contraseña: `PodosPro2024!Super`
 5. Click "Acceder al Sistema"
 6. Redirección automática a `/superadmin`
@@ -53,7 +53,7 @@ El sistema tiene **3 puntos de entrada separados**:
 
 ### **IMPORTANTE:**
 - El usuario SuperAdmin está creado en la base de datos
-- Email verificado: `superadmin@podoagenda.com`
+- Email verificado: `superadmin@podospro.com`
 - Si es tu primera vez, el sistema creará el usuario automáticamente
 - El flag `is_superadmin: true` está configurado correctamente
 

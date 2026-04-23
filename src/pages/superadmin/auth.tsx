@@ -23,7 +23,10 @@ export default function SuperAdminAuth() {
     setLoading(true);
 
     try {
-      console.log("🔐 Intentando login SuperAdmin con:", loginForm.email);
+      console.log("==========================================");
+      console.log("🔐 INICIO LOGIN SUPERADMIN");
+      console.log("📧 Email:", loginForm.email);
+      console.log("==========================================");
 
       // Intentar login
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -31,14 +34,15 @@ export default function SuperAdminAuth() {
         password: loginForm.password,
       });
 
+      console.log("📥 Respuesta de login:", { authData, authError });
+
       if (authError) {
-        console.error("❌ Error de login:", authError);
+        console.error("❌ ERROR DE LOGIN:", authError.message);
         
         // Si el usuario no existe y es el email de superadmin, créalo
         if (authError.message.includes("Invalid login credentials") && 
-            loginForm.email === "superadmin@podoagenda.com") {
-          
-          console.log("🆕 Creando usuario SuperAdmin...");
+            loginForm.email === "superadmin@podospro.com") {
+          console.log("🆕 Usuario no existe. Creando SuperAdmin...");
           
           const { data: signupData, error: signupError } = await supabase.auth.signUp({
             email: loginForm.email,
@@ -48,59 +52,77 @@ export default function SuperAdminAuth() {
                 is_superadmin: true,
                 full_name: "Super Administrator",
               },
-              emailRedirectTo: `${window.location.origin}/superadmin`,
             },
           });
 
+          console.log("📥 Respuesta de signup:", { signupData, signupError });
+
           if (signupError) {
-            console.error("❌ Error al crear SuperAdmin:", signupError);
+            console.error("❌ ERROR AL CREAR:", signupError.message);
             throw signupError;
           }
 
-          console.log("✅ SuperAdmin creado:", signupData);
+          if (!signupData.user) {
+            console.error("❌ No se creó el usuario");
+            throw new Error("Error al crear usuario SuperAdmin");
+          }
+
+          console.log("✅ SuperAdmin creado exitosamente");
+          console.log("👤 User ID:", signupData.user.id);
+          console.log("📧 Email:", signupData.user.email);
+          console.log("📝 Metadata:", signupData.user.user_metadata);
 
           toast({
             title: "✅ SuperAdmin creado",
-            description: "Iniciando sesión...",
+            description: "Ahora puedes iniciar sesión",
           });
 
-          // Esperar un momento y recargar
-          setTimeout(() => {
-            window.location.href = "/superadmin";
-          }, 1000);
+          // Limpiar el formulario para que pueda intentar login nuevamente
+          setLoading(false);
           return;
         }
         
         throw authError;
       }
 
-      console.log("✅ Login exitoso:", authData);
+      console.log("✅ LOGIN EXITOSO");
+      console.log("👤 User ID:", authData.user?.id);
+      console.log("📧 Email:", authData.user?.email);
+      console.log("📝 Raw Metadata:", authData.user?.user_metadata);
+      console.log("🔍 is_superadmin value:", authData.user?.user_metadata?.is_superadmin);
+      console.log("🔍 Type of is_superadmin:", typeof authData.user?.user_metadata?.is_superadmin);
 
       // Verificar metadata (handle both boolean and string "true")
       const isSuperadmin = 
         authData.user?.user_metadata?.is_superadmin === true || 
         authData.user?.user_metadata?.is_superadmin === "true";
         
-      console.log("👑 Es SuperAdmin?", isSuperadmin, authData.user?.user_metadata);
+      console.log("👑 Resultado verificación SuperAdmin:", isSuperadmin);
 
       if (!isSuperadmin) {
-        console.error("❌ Usuario no es SuperAdmin");
+        console.error("❌ ACCESO DENEGADO - No es SuperAdmin");
+        console.log("🚪 Cerrando sesión...");
         await supabase.auth.signOut();
         throw new Error("Acceso denegado. Solo SuperAdmins pueden acceder.");
       }
+
+      console.log("✅ VERIFICACIÓN SUPERADMIN PASADA");
+      console.log("🚀 Redirigiendo a /superadmin...");
 
       toast({
         title: "✅ Acceso concedido",
         description: "Bienvenido, SuperAdmin",
       });
-
-      console.log("🚀 Redirigiendo a /superadmin...");
       
       // Usar window.location para forzar recarga completa
-      window.location.href = "/superadmin";
+      setTimeout(() => {
+        console.log("⏰ Ejecutando redirección...");
+        window.location.href = "/superadmin";
+      }, 500);
 
     } catch (error: any) {
-      console.error("💥 Error completo:", error);
+      console.error("💥 ERROR FINAL:", error);
+      console.log("==========================================");
       toast({
         title: "❌ Error de autenticación",
         description: error.message,
@@ -141,10 +163,10 @@ export default function SuperAdminAuth() {
               <Input
                 id="email"
                 type="email"
-                placeholder="superadmin@podoagenda.com"
+                placeholder="superadmin@podospro.com"
                 value={loginForm.email}
                 onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
-                className="h-12 pl-10 rounded-xl border-purple-500/20 focus:border-purple-500"
+                className="h-12 rounded-xl border-purple-500/20 focus:border-purple-500"
                 required
               />
             </div>
