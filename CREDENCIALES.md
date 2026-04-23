@@ -40,7 +40,7 @@ El sistema tiene **3 puntos de entrada separados**:
   * Dashboard Global (estadísticas del sistema)
   * Empresas (crear/gestionar todas las clínicas)
   * Usuarios (ver todos los usuarios)
-  * Planes (gestionar suscripciones)
+  * Auditoría (logs del sistema)
   * Configuración (settings globales)
 
 ### **Permisos:**
@@ -52,9 +52,9 @@ El sistema tiene **3 puntos de entrada separados**:
 - ✅ Configuración del sistema completo
 
 ### **IMPORTANTE:**
-- El usuario SuperAdmin está creado en la base de datos
-- Email: `superadmin@example.com`
-- El flag `is_superadmin: true` está configurado correctamente
+- El usuario SuperAdmin se crea automáticamente en el primer login
+- Email: `superadmin@example.com` (dominio genérico válido)
+- El flag `is_superadmin: true` se configura automáticamente
 - Este usuario tiene acceso completo al sistema
 
 ---
@@ -185,7 +185,7 @@ El sistema tiene **3 puntos de entrada separados**:
 ```
 Paso 1: Ir a /superadmin/auth
 Paso 2: Ver login simple morado (SIN selector de roles)
-Paso 3: Email: superadmin@podoagenda.com
+Paso 3: Email: superadmin@example.com
 Paso 4: Password: PodosPro2024!Super
 Paso 5: Click "Acceder al Sistema"
 Paso 6: Sistema detecta is_superadmin: true
@@ -269,9 +269,10 @@ El sistema redirige automáticamente según tu rol:
 ### **"No puedo acceder al panel SuperAdmin"**
 **Solución:**
 1. Verifica que estés usando: `/superadmin/auth` (NO `/auth`)
-2. Email exacto: `superadmin@podoagenda.com`
+2. Email exacto: `superadmin@example.com`
 3. Password exacto: `PodosPro2024!Super`
 4. Si ves selector de roles = estás en la URL incorrecta
+5. Limpia el localStorage: Consola → `localStorage.clear()` → Enter → F5
 
 ### **"Me redirige automáticamente"**
 **Esto es normal.** El sistema detecta tu rol y te lleva al panel correcto:
@@ -289,6 +290,11 @@ El sistema redirige automáticamente según tu rol:
 ### **"¿Dónde selecciono el plan?"**
 El selector de planes aparece en el tab "Crear Empresa" de `/auth`.
 Hay 3 opciones: Starter, Professional, Enterprise.
+
+### **"Error 500 - Recursión infinita"**
+**Solución:**
+Este error ya está corregido. Las políticas RLS fueron optimizadas.
+Si persiste: Contacta soporte técnico.
 
 ---
 
@@ -339,6 +345,8 @@ Todas las contraseñas pueden cambiarse desde:
 - **Control de Acceso:** El admin decide permisos desde `/admin?tab=ajustes`:
   - ✅/❌ Permitir login de pacientes
   - ✅/❌ Auto-registro de pacientes
+- **RLS Optimizado:** Las políticas de seguridad fueron reescritas para evitar recursión infinita.
+- **Auto-creación SuperAdmin:** El usuario SuperAdmin se crea automáticamente en el primer login.
 
 ---
 
@@ -351,6 +359,7 @@ Al desplegar:
 4. ✅ Configurar políticas de seguridad adicionales
 5. ✅ Revisar permisos de RLS en Supabase
 6. ✅ Actualizar dominios de email
+7. ✅ Verificar que las políticas RLS no tengan recursión
 
 ---
 
@@ -362,7 +371,33 @@ Al desplegar:
 
 ---
 
+## 🔧 SOLUCIÓN DE PROBLEMAS TÉCNICOS
+
+### **Limpiar caché y sesiones:**
+```javascript
+// Abrir consola del navegador (F12)
+localStorage.clear();
+sessionStorage.clear();
+location.reload();
+```
+
+### **Ver logs de autenticación:**
+1. Abrir consola (F12)
+2. Ir a pestaña "Console"
+3. Intentar login
+4. Buscar logs que empiecen con: 🔐, ✅, ❌, 👑
+
+### **Verificar sesión activa:**
+```javascript
+// En consola (F12):
+const { data } = await supabase.auth.getSession();
+console.log(data);
+```
+
+---
+
 **Última actualización:** 2026-04-23
 **Versión del Sistema:** 1.0.0
 **Estado:** ✅ Sistema Completamente Operativo
 **Branding:** PodoAgenda Pro
+**RLS:** ✅ Optimizado sin recursión
