@@ -1,9 +1,9 @@
 ---
 title: Patient Portal
-status: done
+status: in_progress
 priority: medium
 type: feature
-tags: [patient, portal, history]
+tags: [patient, portal]
 created_by: agent
 created_at: 2026-04-22T23:27:36Z
 position: 6
