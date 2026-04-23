@@ -178,7 +178,7 @@ ${ficha.nextVisit ? `\nPróxima visita sugerida: ${ficha.nextVisit}` : ''}
 
       // Update appointment status to in_progress if scheduled
       if (selectedAppointment.status === 'scheduled' || selectedAppointment.status === 'confirmed') {
-        await appointmentService.updateAppointmentStatus(companyId, selectedAppointment.id, 'in_progress');
+        await appointmentService.updateAppointment(companyId, selectedAppointment.id, { status: 'in_progress' });
       }
 
       toast({ 
@@ -204,7 +204,7 @@ ${ficha.nextVisit ? `\nPróxima visita sugerida: ${ficha.nextVisit}` : ''}
     if (!selectedAppointment) return;
 
     try {
-      await appointmentService.updateAppointmentStatus(companyId, selectedAppointment.id, 'completed');
+      await appointmentService.updateAppointment(companyId, selectedAppointment.id, { status: 'completed' });
       
       toast({ 
         title: "Atención finalizada exitosamente",
@@ -245,7 +245,7 @@ ${ficha.nextVisit ? `\nPróxima visita sugerida: ${ficha.nextVisit}` : ''}
 
     try {
       // In a real system, this would create a payment record
-      await appointmentService.updateAppointmentStatus(companyId, selectedAppointment.id, 'completed');
+      await appointmentService.updateAppointment(companyId, selectedAppointment.id, { status: 'completed' });
       
       toast({ 
         title: "Pago registrado correctamente",
