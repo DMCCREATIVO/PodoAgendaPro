@@ -55,7 +55,6 @@ export default function PublicAuth() {
         .insert({
           name: registerForm.company_name,
           slug: slug,
-          owner_id: authData.user.id,
           phone: registerForm.phone,
           settings: {
             allow_patient_login: true,
