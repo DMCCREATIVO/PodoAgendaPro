@@ -25,9 +25,10 @@ export default function App({ Component, pageProps }: AppProps) {
 
   const checkAuthAndRedirect = async () => {
     // Public routes that don't need auth check
-    const publicRoutes = ['/', '/auth', '/terminos', '/privacidad'];
-    const isDynamicPublicRoute = router.pathname.match(/^\/\[slug\]$/);
+    const publicRoutes = ['/', '/auth', '/terminos', '/privacidad', '/onboarding'];
+    const isDynamicPublicRoute = router.pathname.match(/^\/\[slug\](\/.*)?$/);
     
+    // Allow access to public routes
     if (publicRoutes.includes(router.pathname) || isDynamicPublicRoute) {
       setIsChecking(false);
       return;
@@ -37,40 +38,72 @@ export default function App({ Component, pageProps }: AppProps) {
 
     if (!user) {
       // Not authenticated, redirect to login
-      if (!publicRoutes.includes(router.pathname)) {
-        router.push('/auth');
-      }
+      router.push('/auth');
       setIsChecking(false);
       return;
     }
 
-    // User is authenticated, check role and correct panel
+    // User is authenticated - check their role and ensure correct panel
     const isSuperadmin = user.user_metadata?.is_superadmin === true;
 
     if (isSuperadmin) {
-      // SuperAdmin should only access /superadmin
-      if (!router.pathname.startsWith('/superadmin')) {
+      // SuperAdmin - only allow /superadmin routes
+      if (router.pathname.startsWith('/superadmin')) {
+        // Already in correct place
+        setIsChecking(false);
+        return;
+      } else {
+        // Redirect to superadmin panel
         router.push('/superadmin');
+        setIsChecking(false);
+        return;
       }
-    } else {
-      // Regular user - check company membership
-      const { data: companyUser } = await supabase
-        .from("company_users")
-        .select("role")
-        .eq("user_id", user.id)
-        .limit(1)
-        .single();
+    }
 
-      if (companyUser) {
-        const role = companyUser.role;
-        
-        // Check if user is in correct panel
-        if ((role === "owner" || role === "admin") && !router.pathname.startsWith('/admin') && !router.pathname.startsWith('/configuracion') && !router.pathname.startsWith('/paciente')) {
-          router.push('/admin');
-        } else if ((role === "podiatrist" || role === "staff") && !router.pathname.startsWith('/podologo') && !router.pathname.startsWith('/configuracion') && !router.pathname.startsWith('/paciente')) {
-          router.push('/podologo');
-        }
-      }
+    // Regular user - check company membership
+    const { data: companyUser } = await supabase
+      .from("company_users")
+      .select("role")
+      .eq("user_id", user.id)
+      .limit(1)
+      .single();
+
+    if (!companyUser) {
+      // No company found - redirect to auth
+      router.push('/auth');
+      setIsChecking(false);
+      return;
+    }
+
+    const role = companyUser.role;
+    
+    // Define allowed routes per role
+    const allowedRoutes: Record<string, string[]> = {
+      owner: ['/admin', '/configuracion', '/paciente'],
+      admin: ['/admin', '/configuracion', '/paciente'],
+      podiatrist: ['/podologo', '/configuracion', '/paciente'],
+      staff: ['/podologo', '/configuracion', '/paciente'],
+      patient: ['/cliente', '/configuracion'],
+    };
+
+    const userAllowedRoutes = allowedRoutes[role] || [];
+    const isInAllowedRoute = userAllowedRoutes.some(route => router.pathname.startsWith(route));
+
+    if (isInAllowedRoute) {
+      // Already in correct place
+      setIsChecking(false);
+      return;
+    }
+
+    // Redirect to default panel for role
+    if (role === "owner" || role === "admin") {
+      router.push('/admin');
+    } else if (role === "podiatrist" || role === "staff") {
+      router.push('/podologo');
+    } else if (role === "patient") {
+      router.push('/cliente');
+    } else {
+      router.push('/auth');
     }
 
     setIsChecking(false);
@@ -78,8 +111,11 @@ export default function App({ Component, pageProps }: AppProps) {
 
   if (isChecking) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/20 to-background">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="text-muted-foreground text-sm">Cargando...</p>
+        </div>
       </div>
     );
   }

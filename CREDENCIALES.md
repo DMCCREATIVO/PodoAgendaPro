@@ -58,26 +58,27 @@
 1. Ir a `/auth`
 2. Login con credenciales de SuperAdmin
 3. Redirección automática a `/superadmin`
-4. Desde ahí puede ver un enlace en cada empresa demo para "Ir a Panel Admin"
+4. Desde ahí puede gestionar todas las empresas del sistema
 
 ### Administrador de Empresa
 1. Ir a `/centro-podosalud/auth` (URL de su empresa)
-2. Login con credenciales de Admin
-3. Redirección automática a `/centro-podosalud/admin`
-4. Puede gestionar toda su clínica
+2. Seleccionar rol "Administrador" en el selector visual
+3. Login con credenciales de Admin
+4. Redirección automática a `/admin`
+5. Puede gestionar toda su clínica
 
 ### Podólogo
 1. Ir a `/centro-podosalud/auth`
 2. Seleccionar rol "Podólogo" en el selector visual
 3. Login con credenciales de Podólogo
-4. Redirección automática a `/centro-podosalud/podologo`
+4. Redirección automática a `/podologo`
 5. Puede atender pacientes y ver su agenda
 
 ### Paciente
 1. Ir a `/centro-podosalud/auth`
 2. Seleccionar rol "Paciente" en el selector visual
 3. Login con credenciales de Paciente
-4. Redirección automática a `/centro-podosalud/cliente`
+4. Redirección automática a `/cliente`
 5. Puede ver sus citas e historial
 
 ---
@@ -104,6 +105,16 @@
 
 ---
 
+## ⚠️ IMPORTANTE: SEPARACIÓN DE ACCESOS
+
+**NO MEZCLAR:**
+- SuperAdmin entra por `/auth` (sin selector de roles)
+- Empresas entran por `/[slug]/auth` (con selector de roles)
+
+**Cada uno tiene su propio flujo de login separado.**
+
+---
+
 ## 📝 NOTAS IMPORTANTES
 
 - **Slugs Únicos:** Cada empresa tiene un slug único (ej: `centro-podosalud`). Si dos empresas intentan usar el mismo nombre, el sistema agregará un sufijo.
@@ -120,14 +131,6 @@
 
 Todas las contraseñas pueden cambiarse desde:
 - Configuración → Tab "Seguridad" → "Cambiar Contraseña"
-
-O ejecutando en Supabase:
-```sql
--- Cambiar contraseña de un usuario específico
-UPDATE auth.users 
-SET encrypted_password = crypt('NuevaContraseña123!', gen_salt('bf'))
-WHERE email = 'email@example.com';
-```
 
 ---
 
