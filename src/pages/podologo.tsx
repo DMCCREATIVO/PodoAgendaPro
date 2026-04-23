@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
@@ -30,23 +29,7 @@ export default function PodiatristPanel() {
   const router = useRouter();
   const { toast } = useToast();
   const companyId = useCompanyId();
-  const [activeTab, setActiveTab] = useState("mi-dia");
-
-  // DEMO MODE - Bypass authentication
-  const isDemoMode = router.query.demo === "true";
-
-  if (isDemoMode) {
-    return (
-      <PodiatristLayout activeTab={activeTab}>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center space-y-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-            <p className="text-gray-600">Cargando...</p>
-          </div>
-        </div>
-      </PodiatristLayout>
-    );
-  }
+  const [activeTab, setActiveTab] = useState("dia");
 
   // Real data states
   const [appointments, setAppointments] = useState<any[]>([]);

@@ -183,6 +183,7 @@ export type Database = {
       clients: {
         Row: {
           assigned_to: string | null
+          auth_user_id: string | null
           avatar_url: string | null
           company_id: string
           created_at: string | null
@@ -203,6 +204,7 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          auth_user_id?: string | null
           avatar_url?: string | null
           company_id: string
           created_at?: string | null
@@ -223,6 +225,7 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          auth_user_id?: string | null
           avatar_url?: string | null
           company_id?: string
           created_at?: string | null
