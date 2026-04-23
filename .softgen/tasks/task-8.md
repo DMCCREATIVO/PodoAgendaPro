@@ -16,6 +16,11 @@ position: 8
 ✅ **Frontend:** Completamente purgado y limpio
 ✅ **Errores:** 0 errores de compilación
 ✅ **Sistema de Auth:** Implementado y funcional
+✅ **RLS Políticas:** Corregidas para permitir login
+
+**FIX CRÍTICO APLICADO:**
+- Política RLS creada: `anon_read_users_for_login` permite SELECT en tabla users
+- Esto soluciona el error "Usuario no encontrado" causado por bloqueo RLS
 
 **ARQUITECTURA NUEVA:**
 - Sistema de autenticación robusto (sin Supabase Auth)
