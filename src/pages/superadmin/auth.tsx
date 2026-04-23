@@ -23,12 +23,55 @@ export default function SuperAdminAuth() {
     setLoading(true);
 
     try {
+      // First, try to login
       const { data, error } = await supabase.auth.signInWithPassword({
         email: loginForm.email,
         password: loginForm.password,
       });
 
-      if (error) throw error;
+      if (error) {
+        // If user doesn't exist and is the superadmin email, create it
+        if (error.message.includes("Invalid login credentials") && 
+            loginForm.email === "superadmin@podoagenda.com") {
+          
+          toast({
+            title: "Creando usuario SuperAdmin",
+            description: "Primera vez, creando cuenta...",
+          });
+
+          // Create superadmin user
+          const { data: signupData, error: signupError } = await supabase.auth.signUp({
+            email: loginForm.email,
+            password: loginForm.password,
+            options: {
+              data: {
+                is_superadmin: true,
+                full_name: "Super Administrator",
+              },
+            },
+          });
+
+          if (signupError) throw signupError;
+
+          toast({
+            title: "SuperAdmin creado",
+            description: "Iniciando sesión...",
+          });
+
+          // Login with newly created account
+          const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+            email: loginForm.email,
+            password: loginForm.password,
+          });
+
+          if (loginError) throw loginError;
+          
+          router.push("/superadmin");
+          return;
+        }
+        
+        throw error;
+      }
 
       // Verify is superadmin
       const isSuperadmin = data.user?.user_metadata?.is_superadmin === true;
