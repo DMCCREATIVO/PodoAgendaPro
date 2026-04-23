@@ -120,12 +120,30 @@ const PAYMENT_STATUS = {
   cancelled: { label: "Cancelado", color: "bg-red-100 text-red-700 border-red-200" },
 };
 
-export default function Admin() {
+export default function AdminPanel() {
   const router = useRouter();
-  const { toast } = useToast();
-  const companyId = useCompanyId();
-  const activeTab = (router.query.tab as string) || "dashboard";
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const { loading: authLoading, authorized } = useAuthGuard("admin");
+  const [activeTab, setActiveTab] = useState("dashboard");
+
+  // DEMO MODE - Bypass authentication
+  const isDemoMode = router.query.demo === "true";
+
+  if (authLoading && !isDemoMode) {
+    return (
+      <AdminLayout activeTab={activeTab}>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+            <p className="text-gray-600">Cargando...</p>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (!authorized && !isDemoMode) {
+    return null;
+  }
 
   // Real data states
   const [clients, setClients] = useState<any[]>([]);

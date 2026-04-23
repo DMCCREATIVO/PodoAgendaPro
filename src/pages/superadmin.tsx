@@ -19,11 +19,21 @@ export default function SuperAdmin() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
+  const [activeTab, setActiveTab] = useState("dashboard");
+
+  // DEMO MODE - Bypass authentication
+  const isDemoMode = router.query.demo === "true";
 
   useEffect(() => {
-    let isMounted = true;
+    const checkAuth = async () => {
+      // If demo mode, skip auth check
+      if (isDemoMode) {
+        console.log("🎭 DEMO MODE ACTIVE - Bypassing authentication");
+        setAuthorized(true);
+        setLoading(false);
+        return;
+      }
 
-    const checkAccess = async () => {
       try {
         console.log("=== VERIFICACIÓN SUPERADMIN ===");
         
@@ -72,7 +82,7 @@ export default function SuperAdmin() {
       }
     };
 
-    checkAccess();
+    checkAuth();
 
     return () => {
       isMounted = false;

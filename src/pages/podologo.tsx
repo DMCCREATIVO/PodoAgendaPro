@@ -26,11 +26,27 @@ import { clinicalNotesService } from "@/services/clinicalNotesService";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 
-export default function Podologo() {
+export default function PodiatristPanel() {
   const router = useRouter();
   const { toast } = useToast();
   const companyId = useCompanyId();
-  const activeTab = (router.query.tab as string) || "dia";
+  const [activeTab, setActiveTab] = useState("mi-dia");
+
+  // DEMO MODE - Bypass authentication
+  const isDemoMode = router.query.demo === "true";
+
+  if (isDemoMode) {
+    return (
+      <PodiatristLayout activeTab={activeTab}>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+            <p className="text-gray-600">Cargando...</p>
+          </div>
+        </div>
+      </PodiatristLayout>
+    );
+  }
 
   // Real data states
   const [appointments, setAppointments] = useState<any[]>([]);

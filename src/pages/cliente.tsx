@@ -16,6 +16,9 @@ export default function PatientPortal() {
   const { loading, authorized } = useAuthGuard("patient");
   
   const activeTab = (router.query.tab as string) || "appointments";
+  
+  // DEMO MODE - Bypass authentication
+  const isDemoMode = router.query.demo === "true";
 
   const setActiveTab = (tab: string) => {
     router.push({ pathname: "/cliente", query: { tab } }, undefined, { shallow: true });
@@ -172,7 +175,7 @@ export default function PatientPortal() {
     return <CheckCircle2 className="h-5 w-5 text-gray-600" />;
   };
 
-  if (loading) {
+  if (loading && !isDemoMode) {
     return (
       <PatientLayout activeTab={activeTab}>
         <div className="flex items-center justify-center min-h-[60vh]">
@@ -185,7 +188,7 @@ export default function PatientPortal() {
     );
   }
 
-  if (!authorized) {
+  if (!authorized && !isDemoMode) {
     return null;
   }
 
