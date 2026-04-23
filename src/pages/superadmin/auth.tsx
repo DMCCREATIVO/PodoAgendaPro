@@ -21,49 +21,41 @@ export default function SuperAdminAuth() {
     setLoading(true);
 
     try {
-      // 1. Intentar login
+      // Login con Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
 
-      if (authError) {
-        throw new Error(authError.message);
-      }
-
+      if (authError) throw authError;
       if (!authData.session || !authData.user) {
         throw new Error("No se pudo establecer la sesión");
       }
 
-      // 2. Verificar que el usuario sea SuperAdmin en la tabla users
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .select("is_superadmin")
-        .eq("id", authData.user.id)
-        .single();
-
-      if (userError || !userData) {
-        await supabase.auth.signOut();
-        throw new Error("Usuario no encontrado en el sistema");
-      }
-
-      if (!userData.is_superadmin) {
+      // Verificar que sea SuperAdmin usando el email directo
+      // Solo superadmin@demo.com puede acceder
+      if (email.trim().toLowerCase() !== "superadmin@demo.com") {
         await supabase.auth.signOut();
         throw new Error("Acceso denegado. Solo SuperAdmins pueden acceder");
       }
 
-      // 3. Login exitoso
+      // Login exitoso
       toast({
         title: "✅ Acceso concedido",
         description: "Bienvenido, SuperAdmin",
       });
 
+      // Redirigir al panel
       router.push("/superadmin");
 
     } catch (error: any) {
+      console.error("Error en login SuperAdmin:", error);
+      
+      await supabase.auth.signOut();
+      
       toast({
         title: "❌ Error de acceso",
-        description: error.message || "Credenciales inválidas",
+        description: error.message || "Credenciales inválidas o acceso no autorizado",
         variant: "destructive",
       });
     } finally {
