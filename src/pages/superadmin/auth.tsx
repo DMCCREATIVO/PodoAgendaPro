@@ -127,12 +127,14 @@ export default function SuperAdminAuth() {
         title: "✅ Acceso concedido",
         description: "Bienvenido, SuperAdmin",
       });
+
+      console.log("🚀 Redirigiendo a /superadmin...");
       
-      // Usar window.location para forzar recarga completa
+      // Give session time to propagate, then redirect
       setTimeout(() => {
         console.log("⏰ Ejecutando redirección...");
-        window.location.href = "/superadmin";
-      }, 500);
+        router.push("/superadmin");
+      }, 200);
 
     } catch (error: any) {
       console.error("💥 ERROR FINAL:", error);
