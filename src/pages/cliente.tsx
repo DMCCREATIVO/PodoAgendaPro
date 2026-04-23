@@ -1,380 +1,578 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/router";
 import { PatientLayout } from "@/components/patient/PatientLayout";
+import { useAuthGuard } from "@/middleware/authGuard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, User, FileText, DollarSign, CheckCircle, XCircle, AlertCircle, Download } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useCompanyId } from "@/hooks/useCompanyId";
-import { appointmentService } from "@/services/appointmentService";
-import { clinicalNotesService } from "@/services/clinicalNotesService";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Calendar, Clock, User, MapPin, Phone, Mail, CreditCard, Download, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 
-export default function Cliente() {
+export default function PatientPortal() {
   const router = useRouter();
-  const { toast } = useToast();
-  const companyId = useCompanyId();
-  const activeTab = (router.query.tab as string) || "citas";
+  const { loading, authorized } = useAuthGuard("patient");
+  const [activeTab, setActiveTab] = useState("appointments");
 
-  const [appointments, setAppointments] = useState<any[]>([]);
-  const [clinicalNotes, setClinicalNotes] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  // Mock data - próximas citas
+  const upcomingAppointments = [
+    {
+      id: "1",
+      date: "2026-04-25",
+      time: "10:00",
+      podiatrist: "Dra. Ana Martínez",
+      service: "Consulta General",
+      status: "confirmed",
+      location: "Consultorio 2",
+    },
+    {
+      id: "2",
+      date: "2026-05-02",
+      time: "15:30",
+      podiatrist: "Dr. Carlos González",
+      service: "Tratamiento de Hongos",
+      status: "scheduled",
+      location: "Consultorio 1",
+    },
+  ];
 
-  useEffect(() => {
-    loadUserData();
-  }, []);
+  // Mock data - historial de citas
+  const pastAppointments = [
+    {
+      id: "3",
+      date: "2026-04-10",
+      time: "11:00",
+      podiatrist: "Dra. Ana Martínez",
+      service: "Quiropodia",
+      status: "completed",
+      notes: "Tratamiento exitoso. Uñas saludables.",
+    },
+    {
+      id: "4",
+      date: "2026-03-15",
+      time: "14:00",
+      podiatrist: "Dr. Carlos González",
+      service: "Evaluación Inicial",
+      status: "completed",
+      notes: "Primera consulta. Plan de tratamiento establecido.",
+    },
+    {
+      id: "5",
+      date: "2026-02-20",
+      time: "10:30",
+      podiatrist: "Dra. Ana Martínez",
+      service: "Tratamiento de Callosidades",
+      status: "completed",
+      notes: "Eliminación de callosidades plantares. Recomendaciones de cuidado diario.",
+    },
+  ];
 
-  useEffect(() => {
-    if (companyId && currentUser) {
-      loadData();
-    }
-  }, [companyId, currentUser]);
+  // Mock data - historial clínico (solo info pública)
+  const clinicalHistory = [
+    {
+      id: "1",
+      date: "2026-04-10",
+      title: "Quiropodia Completa",
+      podiatrist: "Dra. Ana Martínez",
+      notes: "Tratamiento de uñas completado. Se realizó limado y pulido. Uñas en buen estado.",
+      recommendations: "Mantener higiene diaria. Usar calzado cómodo.",
+    },
+    {
+      id: "2",
+      date: "2026-03-15",
+      title: "Evaluación Podológica",
+      podiatrist: "Dr. Carlos González",
+      notes: "Evaluación completa del pie. Análisis de marcha. Estudio biomecánico.",
+      recommendations: "Ejercicios de fortalecimiento. Control en 4 semanas.",
+    },
+    {
+      id: "3",
+      date: "2026-02-20",
+      title: "Tratamiento de Callosidades",
+      podiatrist: "Dra. Ana Martínez",
+      notes: "Eliminación de hiperqueratosis plantar. Piel suave y saludable.",
+      recommendations: "Hidratación diaria. Evitar presión excesiva.",
+    },
+  ];
 
-  const loadUserData = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUser(user);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "No se pudo cargar el usuario",
-        variant: "destructive",
-      });
-    }
+  // Mock data - pagos
+  const payments = [
+    {
+      id: "1",
+      date: "2026-04-10",
+      amount: 35000,
+      service: "Quiropodia",
+      status: "paid",
+      method: "Tarjeta de Crédito",
+      invoice: "FAC-2026-0124",
+    },
+    {
+      id: "2",
+      date: "2026-03-15",
+      amount: 45000,
+      service: "Evaluación Podológica Completa",
+      status: "paid",
+      method: "Efectivo",
+      invoice: "FAC-2026-0089",
+    },
+    {
+      id: "3",
+      date: "2026-02-20",
+      amount: 30000,
+      service: "Tratamiento de Callosidades",
+      status: "paid",
+      method: "Transferencia",
+      invoice: "FAC-2026-0045",
+    },
+    {
+      id: "4",
+      date: "2026-04-25",
+      amount: 40000,
+      service: "Consulta General (Próxima)",
+      status: "pending",
+      method: "-",
+      invoice: "-",
+    },
+  ];
+
+  // Mock data - perfil del paciente
+  const [patientProfile, setPatientProfile] = useState({
+    fullName: "Juan Pérez",
+    email: "juan.perez@email.com",
+    phone: "+56 9 8765 4321",
+    address: "Av. Providencia 1234, Santiago",
+    birthDate: "1985-06-15",
+    emergencyContact: "María Pérez - +56 9 8765 1234",
+  });
+
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, { label: string; className: string }> = {
+      confirmed: { label: "Confirmada", className: "bg-green-500/10 text-green-600 border-green-500/20" },
+      scheduled: { label: "Agendada", className: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
+      completed: { label: "Completada", className: "bg-gray-500/10 text-gray-600 border-gray-500/20" },
+      cancelled: { label: "Cancelada", className: "bg-red-500/10 text-red-600 border-red-500/20" },
+      pending: { label: "Pendiente", className: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20" },
+      paid: { label: "Pagado", className: "bg-green-500/10 text-green-600 border-green-500/20" },
+    };
+    const { label, className } = variants[status] || variants.scheduled;
+    return <Badge className={className}>{label}</Badge>;
   };
 
-  const loadData = async () => {
-    setIsLoading(true);
-    try {
-      // In a real system, we would filter by client_id based on authenticated user
-      // For demo purposes, we'll show all appointments
-      const [appointmentsData, notesData] = await Promise.all([
-        appointmentService.getAppointments(companyId),
-        clinicalNotesService.getClientNotes(companyId, currentUser?.id || ''),
-      ]);
-
-      // Filter only public notes for patient view
-      const publicNotes = notesData.filter(note => !note.is_private);
-
-      setAppointments(appointmentsData);
-      setClinicalNotes(publicNotes);
-    } catch (error: any) {
-      toast({
-        title: "Error cargando datos",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  const getStatusIcon = (status: string) => {
+    if (status === "paid") return <CheckCircle2 className="h-5 w-5 text-green-600" />;
+    if (status === "pending") return <AlertCircle className="h-5 w-5 text-yellow-600" />;
+    if (status === "cancelled") return <XCircle className="h-5 w-5 text-red-600" />;
+    return <CheckCircle2 className="h-5 w-5 text-gray-600" />;
   };
 
-  const handleCancelAppointment = async (appointmentId: string) => {
-    if (!confirm('¿Estás seguro de cancelar esta cita?')) return;
+  if (loading) {
+    return (
+      <PatientLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+            <p className="text-gray-600">Cargando...</p>
+          </div>
+        </div>
+      </PatientLayout>
+    );
+  }
 
-    try {
-      await appointmentService.cancelAppointment(companyId, appointmentId, 'Cancelada por el paciente');
-      toast({ title: "Cita cancelada exitosamente" });
-      loadData();
-    } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    }
-  };
-
-  // Separate upcoming and past appointments
-  const now = new Date();
-  const upcomingAppointments = appointments.filter(apt => new Date(apt.scheduled_at) >= now);
-  const pastAppointments = appointments.filter(apt => new Date(apt.scheduled_at) < now);
+  if (!authorized) {
+    return null;
+  }
 
   return (
-    <PatientLayout activeTab={activeTab}>
-      {/* Mis Citas Tab */}
-      {activeTab === "citas" && (
-        <div className="space-y-6 animate-fade-in">
+    <PatientLayout>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="font-heading font-bold text-3xl mb-2">Mis Citas</h1>
-            <p className="text-muted-foreground">Agenda de citas programadas y pasadas</p>
+            <h1 className="text-3xl font-bold text-gray-900">Mi Portal</h1>
+            <p className="text-gray-600 mt-1">Bienvenido, {patientProfile.fullName}</p>
           </div>
+          <Button
+            onClick={() => router.push("/agenda")}
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/30 transition-all duration-300"
+          >
+            <Calendar className="mr-2 h-5 w-5" />
+            Agendar Nueva Cita
+          </Button>
+        </div>
 
-          {/* Upcoming Appointments */}
-          <div>
-            <h2 className="font-heading font-semibold text-xl mb-4">Próximas Citas</h2>
-            {isLoading ? (
-              <Card className="p-8 text-center soft-shadow border-0">
-                <p className="text-muted-foreground">Cargando citas...</p>
-              </Card>
-            ) : upcomingAppointments.length === 0 ? (
-              <Card className="p-8 text-center soft-shadow border-0">
-                <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground mb-4">No tienes citas programadas</p>
-                <Button className="rounded-xl shadow-lg shadow-primary/20">
-                  Agendar Nueva Cita
-                </Button>
-              </Card>
-            ) : (
-              <div className="grid md:grid-cols-2 gap-4">
-                {upcomingAppointments.map((apt) => (
-                  <Card key={apt.id} className="p-6 soft-shadow border-0 hover-lift">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
-                          <Calendar className="w-6 h-6 text-primary" />
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex bg-white/60 backdrop-blur-xl border border-gray-200/50 shadow-sm">
+            <TabsTrigger value="appointments" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              Mis Citas
+            </TabsTrigger>
+            <TabsTrigger value="history" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              Historial
+            </TabsTrigger>
+            <TabsTrigger value="payments" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              Pagos
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              Configuración
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Tab: Mis Citas */}
+          <TabsContent value="appointments" className="space-y-6">
+            {/* Próximas Citas */}
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Próximas Citas</h2>
+              <div className="grid gap-4">
+                {upcomingAppointments.map((appointment) => (
+                  <Card key={appointment.id} className="p-6 hover:shadow-lg transition-shadow bg-white/80 backdrop-blur-sm border-gray-200/50">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-xl p-3">
+                            <Calendar className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900">{appointment.service}</p>
+                            <p className="text-sm text-gray-600">
+                              {new Date(appointment.date).toLocaleDateString("es-CL", {
+                                weekday: "long",
+                                day: "numeric",
+                                month: "long",
+                              })}
+                            </p>
+                          </div>
                         </div>
+                        <div className="flex flex-wrap gap-4 text-sm text-gray-600 ml-14">
+                          <div className="flex items-center gap-1.5">
+                            <Clock className="h-4 w-4" />
+                            {appointment.time}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <User className="h-4 w-4" />
+                            {appointment.podiatrist}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <MapPin className="h-4 w-4" />
+                            {appointment.location}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {getStatusBadge(appointment.status)}
+                        <Button variant="outline" size="sm" className="border-gray-200">
+                          Ver Detalles
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            {/* Historial de Citas */}
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Historial de Citas</h2>
+              <div className="grid gap-3">
+                {pastAppointments.map((appointment) => (
+                  <Card key={appointment.id} className="p-5 bg-white/60 backdrop-blur-sm border-gray-200/50 hover:bg-white/80 transition-colors">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-3">
+                          <p className="font-medium text-gray-900">{appointment.service}</p>
+                          {getStatusBadge(appointment.status)}
+                        </div>
+                        <div className="text-sm text-gray-600 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-3.5 w-3.5" />
+                            {new Date(appointment.date).toLocaleDateString("es-CL")} - {appointment.time}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <User className="h-3.5 w-3.5" />
+                            {appointment.podiatrist}
+                          </div>
+                          {appointment.notes && (
+                            <p className="text-gray-600 mt-2 italic">{appointment.notes}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Tab: Historial Clínico */}
+          <TabsContent value="history" className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+              <p className="text-sm text-blue-900">
+                <strong>Nota:</strong> Este historial muestra solo la información general de tus tratamientos.
+                Los detalles clínicos completos son confidenciales y están disponibles solo para tu podólogo.
+              </p>
+            </div>
+
+            {/* Timeline */}
+            <div className="relative space-y-8 before:absolute before:inset-0 before:ml-5 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-gray-200 before:to-transparent">
+              {clinicalHistory.map((entry, index) => (
+                <div key={entry.id} className="relative flex gap-6">
+                  {/* Timeline dot */}
+                  <div className="flex flex-col items-center">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg ring-4 ring-white z-10">
+                      {index + 1}
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <Card className="flex-1 p-6 bg-white/80 backdrop-blur-sm border-gray-200/50 hover:shadow-lg transition-shadow">
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-4">
                         <div>
-                          <h3 className="font-semibold">{apt.service?.name || 'Servicio'}</h3>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(apt.scheduled_at).toLocaleDateString('es-CL', { 
-                              weekday: 'long', 
-                              day: 'numeric', 
-                              month: 'long' 
+                          <h3 className="text-lg font-semibold text-gray-900">{entry.title}</h3>
+                          <p className="text-sm text-gray-600">
+                            {new Date(entry.date).toLocaleDateString("es-CL", {
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric",
                             })}
                           </p>
                         </div>
+                        <Badge className="bg-gray-100 text-gray-700 border-gray-200">
+                          {entry.podiatrist}
+                        </Badge>
                       </div>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "rounded-full",
-                          apt.status === "scheduled" && "bg-blue-100 text-blue-700 border-blue-200",
-                          apt.status === "confirmed" && "bg-green-100 text-green-700 border-green-200",
-                          apt.status === "cancelled" && "bg-red-100 text-red-700 border-red-200"
-                        )}
-                      >
-                        {apt.status === "scheduled" ? "Programada" :
-                         apt.status === "confirmed" ? "Confirmada" : "Cancelada"}
-                      </Badge>
-                    </div>
-
-                    <div className="space-y-2 mb-4">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Clock className="w-4 h-4 text-muted-foreground" />
-                        <span>{new Date(apt.scheduled_at).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                      {apt.assigned_to_user && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <User className="w-4 h-4 text-muted-foreground" />
-                          <span>{apt.assigned_to_user.full_name || 'Podólogo'}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2 text-sm">
-                        <DollarSign className="w-4 h-4 text-muted-foreground" />
-                        <span>${apt.service?.price?.toLocaleString()}</span>
-                      </div>
-                    </div>
-
-                    {apt.notes && (
-                      <div className="p-3 rounded-lg bg-muted/30 mb-4">
-                        <p className="text-sm text-muted-foreground">{apt.notes}</p>
-                      </div>
-                    )}
-
-                    {apt.status !== 'cancelled' && apt.status !== 'completed' && (
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="rounded-xl flex-1"
-                          onClick={() => handleCancelAppointment(apt.id)}
-                        >
-                          <XCircle className="w-4 h-4 mr-2" />
-                          Cancelar
-                        </Button>
-                      </div>
-                    )}
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Past Appointments */}
-          {pastAppointments.length > 0 && (
-            <div>
-              <h2 className="font-heading font-semibold text-xl mb-4">Historial de Citas</h2>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {pastAppointments.slice(0, 6).map((apt) => (
-                  <Card key={apt.id} className="p-4 soft-shadow border-0">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className={cn(
-                          "w-8 h-8 rounded-full flex items-center justify-center",
-                          apt.status === "completed" && "bg-green-100",
-                          apt.status === "cancelled" && "bg-red-100",
-                          apt.status === "no_show" && "bg-gray-100"
-                        )}>
-                          {apt.status === "completed" ? (
-                            <CheckCircle className="w-4 h-4 text-green-700" />
-                          ) : apt.status === "cancelled" ? (
-                            <XCircle className="w-4 h-4 text-red-700" />
-                          ) : (
-                            <AlertCircle className="w-4 h-4 text-gray-700" />
-                          )}
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-sm font-medium text-gray-700">Notas del Tratamiento:</p>
+                          <p className="text-sm text-gray-600 mt-1">{entry.notes}</p>
                         </div>
                         <div>
-                          <p className="font-semibold text-sm">{apt.service?.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(apt.scheduled_at).toLocaleDateString('es-CL')}
-                          </p>
+                          <p className="text-sm font-medium text-gray-700">Recomendaciones:</p>
+                          <p className="text-sm text-gray-600 mt-1">{entry.recommendations}</p>
                         </div>
                       </div>
                     </div>
-                    <Badge variant="outline" className="rounded-full text-xs">
-                      {apt.status === "completed" ? "Completada" :
-                       apt.status === "cancelled" ? "Cancelada" : "No asistió"}
-                    </Badge>
                   </Card>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
-          )}
-        </div>
-      )}
+          </TabsContent>
 
-      {/* Historial Tab */}
-      {activeTab === "historial" && (
-        <div className="space-y-6 animate-fade-in">
-          <div>
-            <h1 className="font-heading font-bold text-3xl mb-2">Mi Historial Clínico</h1>
-            <p className="text-muted-foreground">Resumen de tus consultas y tratamientos</p>
-          </div>
-
-          {isLoading ? (
-            <Card className="p-8 text-center soft-shadow border-0">
-              <p className="text-muted-foreground">Cargando historial...</p>
-            </Card>
-          ) : clinicalNotes.length === 0 ? (
-            <Card className="p-12 text-center soft-shadow border-0">
-              <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">Aún no tienes registros clínicos</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Los registros de tus consultas aparecerán aquí después de cada atención
-              </p>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {clinicalNotes.map((note) => (
-                <Card key={note.id} className="p-6 soft-shadow border-0">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <FileText className="w-5 h-5 text-primary" />
+          {/* Tab: Pagos */}
+          <TabsContent value="payments" className="space-y-4">
+            <div className="grid gap-4">
+              {payments.map((payment) => (
+                <Card key={payment.id} className="p-6 bg-white/80 backdrop-blur-sm border-gray-200/50 hover:shadow-lg transition-shadow">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                      <div className="bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-xl p-3">
+                        {getStatusIcon(payment.status)}
                       </div>
-                      <div>
-                        <h3 className="font-heading font-semibold text-lg">{note.title || 'Nota Clínica'}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(note.created_at).toLocaleDateString('es-CL', { 
-                            weekday: 'long', 
-                            day: 'numeric', 
-                            month: 'long',
-                            year: 'numeric'
-                          })}
+                      <div className="space-y-2">
+                        <div>
+                          <p className="font-semibold text-gray-900">{payment.service}</p>
+                          <p className="text-sm text-gray-600">
+                            {new Date(payment.date).toLocaleDateString("es-CL", {
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric",
+                            })}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                          {payment.method !== "-" && (
+                            <div className="flex items-center gap-1.5">
+                              <CreditCard className="h-4 w-4" />
+                              {payment.method}
+                            </div>
+                          )}
+                          {payment.invoice !== "-" && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-medium">N° {payment.invoice}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex flex-col lg:items-end gap-3">
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-gray-900">
+                          ${payment.amount.toLocaleString("es-CL")}
                         </p>
+                        {getStatusBadge(payment.status)}
                       </div>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "rounded-full",
-                        note.note_type === "consultation" && "bg-blue-100 text-blue-700 border-blue-200",
-                        note.note_type === "treatment" && "bg-green-100 text-green-700 border-green-200",
-                        note.note_type === "followup" && "bg-purple-100 text-purple-700 border-purple-200",
-                        note.note_type === "observation" && "bg-orange-100 text-orange-700 border-orange-200"
+                      {payment.status === "paid" && (
+                        <Button variant="outline" size="sm" className="border-gray-200">
+                          <Download className="mr-2 h-4 w-4" />
+                          Descargar PDF
+                        </Button>
                       )}
-                    >
-                      {note.note_type === "consultation" ? "Consulta" :
-                       note.note_type === "treatment" ? "Tratamiento" :
-                       note.note_type === "followup" ? "Seguimiento" : "Observación"}
-                    </Badge>
-                  </div>
-
-                  <div className="prose prose-sm max-w-none">
-                    <div className="p-4 rounded-xl bg-muted/30">
-                      <pre className="whitespace-pre-wrap font-sans text-sm">{note.content}</pre>
                     </div>
                   </div>
-
-                  {note.created_by_user && (
-                    <div className="mt-4 pt-4 border-t border-border">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <User className="w-4 h-4" />
-                        <span>Atendido por: {note.created_by_user.full_name || 'Profesional'}</span>
-                      </div>
-                    </div>
-                  )}
                 </Card>
               ))}
             </div>
-          )}
-        </div>
-      )}
 
-      {/* Pagos Tab */}
-      {activeTab === "pagos" && (
-        <div className="space-y-6 animate-fade-in">
-          <div>
-            <h1 className="font-heading font-bold text-3xl mb-2">Mis Pagos</h1>
-            <p className="text-muted-foreground">Historial de pagos y recibos</p>
-          </div>
+            {/* Resumen */}
+            <Card className="p-6 bg-gradient-to-br from-gray-50 to-white border-gray-200/50">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="text-center">
+                  <p className="text-sm text-gray-600 mb-1">Total Pagado</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    ${payments
+                      .filter((p) => p.status === "paid")
+                      .reduce((sum, p) => sum + p.amount, 0)
+                      .toLocaleString("es-CL")}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-gray-600 mb-1">Pendiente</p>
+                  <p className="text-2xl font-bold text-yellow-600">
+                    ${payments
+                      .filter((p) => p.status === "pending")
+                      .reduce((sum, p) => sum + p.amount, 0)
+                      .toLocaleString("es-CL")}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-gray-600 mb-1">Total Tratamientos</p>
+                  <p className="text-2xl font-bold text-gray-900">{payments.length}</p>
+                </div>
+              </div>
+            </Card>
+          </TabsContent>
 
-          <Card className="p-6 soft-shadow border-0">
-            <div className="text-center py-12">
-              <DollarSign className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground mb-2">Módulo de pagos próximamente</p>
-              <p className="text-sm text-muted-foreground">
-                Aquí podrás ver tu historial de pagos y descargar recibos
-              </p>
-            </div>
-          </Card>
-
-          {/* Preview of payment history structure */}
-          <div className="space-y-3 opacity-50 pointer-events-none">
-            <Card className="p-4 soft-shadow border-0">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
-                    <CheckCircle className="w-5 h-5 text-green-700" />
+          {/* Tab: Configuración */}
+          <TabsContent value="settings" className="space-y-6">
+            <Card className="p-6 bg-white/80 backdrop-blur-sm border-gray-200/50">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">Perfil Personal</h2>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName">Nombre Completo</Label>
+                    <Input
+                      id="fullName"
+                      value={patientProfile.fullName}
+                      onChange={(e) => setPatientProfile({ ...patientProfile, fullName: e.target.value })}
+                      className="bg-white border-gray-200"
+                    />
                   </div>
-                  <div>
-                    <p className="font-semibold">Consulta Podológica</p>
-                    <p className="text-sm text-muted-foreground">15 de Marzo, 2026</p>
+                  <div className="space-y-2">
+                    <Label htmlFor="birthDate">Fecha de Nacimiento</Label>
+                    <Input
+                      id="birthDate"
+                      type="date"
+                      value={patientProfile.birthDate}
+                      onChange={(e) => setPatientProfile({ ...patientProfile, birthDate: e.target.value })}
+                      className="bg-white border-gray-200"
+                    />
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-lg">$25.000</p>
-                  <Button variant="ghost" size="sm" className="rounded-lg">
-                    <Download className="w-4 h-4 mr-2" />
-                    Recibo
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      Email
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={patientProfile.email}
+                      onChange={(e) => setPatientProfile({ ...patientProfile, email: e.target.value })}
+                      className="bg-white border-gray-200"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="flex items-center gap-2">
+                      <Phone className="h-4 w-4" />
+                      Teléfono
+                    </Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={patientProfile.phone}
+                      onChange={(e) => setPatientProfile({ ...patientProfile, phone: e.target.value })}
+                      className="bg-white border-gray-200"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="address" className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4" />
+                    Dirección
+                  </Label>
+                  <Input
+                    id="address"
+                    value={patientProfile.address}
+                    onChange={(e) => setPatientProfile({ ...patientProfile, address: e.target.value })}
+                    className="bg-white border-gray-200"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="emergencyContact">Contacto de Emergencia</Label>
+                  <Input
+                    id="emergencyContact"
+                    value={patientProfile.emergencyContact}
+                    onChange={(e) => setPatientProfile({ ...patientProfile, emergencyContact: e.target.value })}
+                    placeholder="Nombre - Teléfono"
+                    className="bg-white border-gray-200"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/30">
+                    Guardar Cambios
+                  </Button>
+                  <Button variant="outline" className="border-gray-200">
+                    Cancelar
                   </Button>
                 </div>
               </div>
             </Card>
 
-            <Card className="p-4 soft-shadow border-0">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
-                    <CheckCircle className="w-5 h-5 text-green-700" />
-                  </div>
-                  <div>
-                    <p className="font-semibold">Quiropodia</p>
-                    <p className="text-sm text-muted-foreground">1 de Febrero, 2026</p>
-                  </div>
+            {/* Seguridad */}
+            <Card className="p-6 bg-white/80 backdrop-blur-sm border-gray-200/50">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">Seguridad</h2>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="currentPassword">Contraseña Actual</Label>
+                  <Input
+                    id="currentPassword"
+                    type="password"
+                    placeholder="••••••••"
+                    className="bg-white border-gray-200"
+                  />
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-lg">$18.000</p>
-                  <Button variant="ghost" size="sm" className="rounded-lg">
-                    <Download className="w-4 h-4 mr-2" />
-                    Recibo
-                  </Button>
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">Nueva Contraseña</Label>
+                  <Input
+                    id="newPassword"
+                    type="password"
+                    placeholder="••••••••"
+                    className="bg-white border-gray-200"
+                  />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirmar Nueva Contraseña</Label>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    placeholder="••••••••"
+                    className="bg-white border-gray-200"
+                  />
+                </div>
+                <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/30">
+                  Cambiar Contraseña
+                </Button>
               </div>
             </Card>
-          </div>
-        </div>
-      )}
+          </TabsContent>
+        </Tabs>
+      </div>
     </PatientLayout>
   );
 }
