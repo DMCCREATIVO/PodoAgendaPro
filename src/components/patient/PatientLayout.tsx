@@ -11,10 +11,10 @@ interface PatientLayoutProps {
 }
 
 const NAV_ITEMS = [
-  { id: "citas", label: "Mis Citas", icon: Calendar },
-  { id: "historial", label: "Historial", icon: FileText },
-  { id: "pagos", label: "Pagos", icon: CreditCard },
-  { id: "configuracion", label: "Configuración", icon: Settings },
+  { id: "appointments", label: "Mis Citas", icon: Calendar },
+  { id: "history", label: "Historial", icon: FileText },
+  { id: "payments", label: "Pagos", icon: CreditCard },
+  { id: "settings", label: "Configuración", icon: Settings },
 ];
 
 export function PatientLayout({ children, activeTab }: PatientLayoutProps) {

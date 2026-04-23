@@ -14,7 +14,12 @@ import { Calendar, Clock, User, MapPin, Phone, Mail, CreditCard, Download, Check
 export default function PatientPortal() {
   const router = useRouter();
   const { loading, authorized } = useAuthGuard("patient");
-  const [activeTab, setActiveTab] = useState("appointments");
+  
+  const activeTab = (router.query.tab as string) || "appointments";
+
+  const setActiveTab = (tab: string) => {
+    router.push({ pathname: "/cliente", query: { tab } }, undefined, { shallow: true });
+  };
 
   // Mock data - próximas citas
   const upcomingAppointments = [
@@ -169,7 +174,7 @@ export default function PatientPortal() {
 
   if (loading) {
     return (
-      <PatientLayout>
+      <PatientLayout activeTab={activeTab}>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center space-y-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
@@ -185,7 +190,7 @@ export default function PatientPortal() {
   }
 
   return (
-    <PatientLayout>
+    <PatientLayout activeTab={activeTab}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
