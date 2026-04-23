@@ -77,7 +77,7 @@ export default function Onboarding() {
       await serviceService.createService(companyId, {
         name: serviceData.name,
         description: serviceData.description,
-        duration: serviceData.duration,
+        duration_minutes: serviceData.duration,
         price: serviceData.price,
         color: "#2563EB",
         is_active: true,
