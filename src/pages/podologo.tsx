@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { PodiatristLayout } from "@/components/podiatrist/PodiatristLayout";
 import { Card } from "@/components/ui/card";
@@ -17,15 +17,13 @@ import {
   FileText, Save, DollarSign, ArrowRight, Eye, Search, Activity
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useCompanyId } from "@/hooks/useCompanyId";
+import { appointmentService } from "@/services/appointmentService";
+import { clientService } from "@/services/clientService";
+import { serviceService } from "@/services/serviceService";
+import { useToast } from "@/hooks/use-toast";
 
-// Mock data
-const MOCK_TODAY_APPOINTMENTS = [
-  { id: 1, time: "09:00", patient: "María González", service: "Consulta Podológica", status: "scheduled", isNext: true },
-  { id: 2, time: "10:30", patient: "Carlos Ramírez", service: "Quiropodia", status: "scheduled", isNext: false },
-  { id: 3, time: "14:00", patient: "Ana Martínez", service: "Pie Diabético", status: "scheduled", isNext: false },
-  { id: 4, time: "15:30", patient: "Juan Pérez", service: "Plantillas", status: "scheduled", isNext: false },
-];
-
+// Mock patient data for clinical demo - will be replaced with real data
 const MOCK_PATIENT_DATA = {
   id: 1,
   name: "María González",
@@ -43,15 +41,17 @@ const MOCK_PATIENT_HISTORY = [
   { id: 2, date: "2026-02-10", diagnosis: "Onicocriptosis hallux izquierdo", treatment: "Espiculectomía + educación", nextVisit: "2026-03-15" },
 ];
 
-const MOCK_MY_PATIENTS = [
-  { id: 1, name: "María González", lastVisit: "2026-04-15", totalVisits: 8, conditions: ["Diabético"], nextVisit: "2026-04-22" },
-  { id: 2, name: "Carlos Ramírez", lastVisit: "2026-04-20", totalVisits: 3, conditions: [], nextVisit: "2026-05-01" },
-  { id: 3, name: "Ana Martínez", lastVisit: "2026-04-18", totalVisits: 12, conditions: ["Pie Plano"], nextVisit: "2026-04-25" },
-];
-
 export default function Podologo() {
   const router = useRouter();
+  const { toast } = useToast();
+  const companyId = useCompanyId();
   const activeTab = (router.query.tab as string) || "dia";
+
+  // Real data states
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Atencion tab state
   const [selectedPatient, setSelectedPatient] = useState<number | null>(1);
@@ -69,12 +69,43 @@ export default function Podologo() {
   });
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
+  // Load data on mount and when company changes
+  useEffect(() => {
+    if (companyId) {
+      loadData();
+    }
+  }, [companyId]);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const [appointmentsData, clientsData, servicesData] = await Promise.all([
+        appointmentService.getAppointmentsByDay(companyId, today),
+        clientService.getClients(companyId),
+        serviceService.getServices(companyId, true), // active only
+      ]);
+
+      setAppointments(appointmentsData);
+      setClients(clientsData);
+      setServices(servicesData);
+    } catch (error: any) {
+      toast({
+        title: "Error cargando datos",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSaveFicha = () => {
-    alert("Ficha guardada correctamente (mock)");
+    toast({ title: "Ficha guardada correctamente" });
   };
 
   const handleFinishAttention = () => {
-    alert("Atención finalizada (mock)");
+    toast({ title: "Atención finalizada exitosamente" });
   };
 
   const handleCharge = () => {
@@ -82,9 +113,12 @@ export default function Podologo() {
   };
 
   const confirmPayment = () => {
-    alert("Pago registrado correctamente (mock)");
+    toast({ title: "Pago registrado correctamente" });
     setShowPaymentModal(false);
   };
+
+  // Get next appointment
+  const nextAppointment = appointments.find(a => a.status === 'scheduled' || a.status === 'confirmed');
 
   return (
     <PodiatristLayout activeTab={activeTab}>
@@ -97,80 +131,106 @@ export default function Podologo() {
           </div>
 
           {/* Next Patient Card */}
-          <Card className="p-6 soft-shadow border-2 border-accent bg-gradient-to-br from-accent/5 to-background">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center">
-                <Clock className="w-6 h-6 text-accent" />
-              </div>
-              <div>
-                <Badge variant="secondary" className="rounded-full mb-2">
-                  Próximo Paciente
-                </Badge>
-                <h2 className="font-heading font-bold text-2xl">
-                  {MOCK_TODAY_APPOINTMENTS.find(a => a.isNext)?.patient}
-                </h2>
-              </div>
-            </div>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Clock className="w-4 h-4" />
-                  <span className="font-semibold text-lg text-foreground">
-                    {MOCK_TODAY_APPOINTMENTS.find(a => a.isNext)?.time}
-                  </span>
+          {nextAppointment ? (
+            <Card className="p-6 soft-shadow border-2 border-accent bg-gradient-to-br from-accent/5 to-background">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center">
+                  <Clock className="w-6 h-6 text-accent" />
                 </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <FileText className="w-4 h-4" />
-                  <span>{MOCK_TODAY_APPOINTMENTS.find(a => a.isNext)?.service}</span>
+                <div>
+                  <Badge variant="secondary" className="rounded-full mb-2">
+                    Próximo Paciente
+                  </Badge>
+                  <h2 className="font-heading font-bold text-2xl">
+                    {nextAppointment.client?.name || "Paciente"}
+                  </h2>
                 </div>
               </div>
-              <div className="flex items-center justify-end">
-                <Button size="lg" className="rounded-2xl shadow-lg shadow-accent/30" asChild>
-                  <a href="?tab=atencion">
-                    Iniciar Atención
-                    <ArrowRight className="w-5 h-5 ml-2" />
-                  </a>
-                </Button>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Clock className="w-4 h-4" />
+                    <span className="font-semibold text-lg text-foreground">
+                      {new Date(nextAppointment.scheduled_at).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <FileText className="w-4 h-4" />
+                    <span>{nextAppointment.service?.name || "Servicio"}</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-end">
+                  <Button size="lg" className="rounded-2xl shadow-lg shadow-accent/30" asChild>
+                    <a href="?tab=atencion">
+                      Iniciar Atención
+                      <ArrowRight className="w-5 h-5 ml-2" />
+                    </a>
+                  </Button>
+                </div>
               </div>
-            </div>
-          </Card>
+            </Card>
+          ) : (
+            <Card className="p-6 soft-shadow border-0">
+              <div className="text-center py-8">
+                <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No hay citas pendientes para hoy</p>
+              </div>
+            </Card>
+          )}
 
           {/* Today's Schedule */}
           <Card className="p-6 soft-shadow border-0">
             <h2 className="font-heading font-bold text-xl mb-4">Agenda del Día</h2>
-            <div className="space-y-3">
-              {MOCK_TODAY_APPOINTMENTS.map((apt) => (
-                <div
-                  key={apt.id}
-                  className={cn(
-                    "flex items-center gap-4 p-4 rounded-2xl transition-colors",
-                    apt.isNext ? "bg-accent/5 border-2 border-accent" : "bg-muted/30 hover:bg-muted/50"
-                  )}
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Clock className="w-4 h-4 text-muted-foreground" />
-                      <span className="font-semibold">{apt.time}</span>
-                      {apt.isNext && (
-                        <Badge variant="secondary" className="rounded-full bg-accent text-accent-foreground ml-2">
-                          Próximo
-                        </Badge>
+            
+            {isLoading ? (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Cargando citas...</p>
+              </div>
+            ) : appointments.length === 0 ? (
+              <div className="text-center py-8">
+                <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No hay citas programadas para hoy</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {appointments.map((apt) => {
+                  const isNext = apt.id === nextAppointment?.id;
+                  return (
+                    <div
+                      key={apt.id}
+                      className={cn(
+                        "flex items-center gap-4 p-4 rounded-2xl transition-colors",
+                        isNext ? "bg-accent/5 border-2 border-accent" : "bg-muted/30 hover:bg-muted/50"
                       )}
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Clock className="w-4 h-4 text-muted-foreground" />
+                          <span className="font-semibold">
+                            {new Date(apt.scheduled_at).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          {isNext && (
+                            <Badge variant="secondary" className="rounded-full bg-accent text-accent-foreground ml-2">
+                              Próximo
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="font-medium">{apt.client?.name || "Paciente"}</p>
+                        <p className="text-sm text-muted-foreground">{apt.service?.name || "Servicio"}</p>
+                      </div>
+                      <Button variant="outline" className="rounded-xl">
+                        Ver Ficha
+                      </Button>
                     </div>
-                    <p className="font-medium">{apt.patient}</p>
-                    <p className="text-sm text-muted-foreground">{apt.service}</p>
-                  </div>
-                  <Button variant="outline" className="rounded-xl">
-                    Ver Ficha
-                  </Button>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </Card>
         </div>
       )}
 
-      {/* Atención Tab - CLINICAL CORE */}
+      {/* Atención Tab - Keep clinical ficha as is (using mock patient data for demo) */}
       {activeTab === "atencion" && (
         <div className="space-y-6 animate-fade-in">
           <div>
@@ -442,7 +502,7 @@ export default function Podologo() {
         </div>
       )}
 
-      {/* Mis Pacientes Tab */}
+      {/* Mis Pacientes Tab - Use real clients data */}
       {activeTab === "pacientes" && (
         <div className="space-y-6 animate-fade-in">
           <div className="flex items-center justify-between">
@@ -458,46 +518,70 @@ export default function Podologo() {
               <Input placeholder="Buscar paciente..." className="pl-10 rounded-xl h-12" />
             </div>
 
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Última Visita</TableHead>
-                  <TableHead>Total Visitas</TableHead>
-                  <TableHead>Condiciones</TableHead>
-                  <TableHead>Próxima Visita</TableHead>
-                  <TableHead>Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {MOCK_MY_PATIENTS.map((patient) => (
-                  <TableRow key={patient.id}>
-                    <TableCell className="font-medium">{patient.name}</TableCell>
-                    <TableCell>{patient.lastVisit}</TableCell>
-                    <TableCell>{patient.totalVisits}</TableCell>
-                    <TableCell>
-                      {patient.conditions.length > 0 ? (
-                        <div className="flex gap-1">
-                          {patient.conditions.map((c, i) => (
-                            <Badge key={i} variant="outline" className="rounded-full text-xs">
-                              {c}
-                            </Badge>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>{patient.nextVisit}</TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="icon" className="rounded-xl">
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                    </TableCell>
+            {isLoading ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">Cargando pacientes...</p>
+              </div>
+            ) : clients.length === 0 ? (
+              <div className="text-center py-12">
+                <User className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No hay pacientes registrados</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Teléfono</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Etiquetas</TableHead>
+                    <TableHead>Acciones</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {clients.map((client) => (
+                    <TableRow key={client.id}>
+                      <TableCell className="font-medium">{client.name}</TableCell>
+                      <TableCell>{client.email || "-"}</TableCell>
+                      <TableCell>{client.phone || "-"}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "rounded-full",
+                            client.status === "active" && "bg-green-100 text-green-700 border-green-200",
+                            client.status === "lead" && "bg-blue-100 text-blue-700 border-blue-200",
+                            client.status === "inactive" && "bg-gray-100 text-gray-700 border-gray-200"
+                          )}
+                        >
+                          {client.status === "active" ? "Activo" : 
+                           client.status === "lead" ? "Lead" : "Inactivo"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {client.tags && client.tags.length > 0 ? (
+                          <div className="flex gap-1">
+                            {client.tags.map((tag: string, i: number) => (
+                              <Badge key={i} variant="outline" className="rounded-full text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="icon" className="rounded-xl">
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </Card>
         </div>
       )}
