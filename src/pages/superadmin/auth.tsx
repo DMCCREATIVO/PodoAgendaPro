@@ -23,28 +23,23 @@ export default function SuperAdminAuth() {
     setLoading(true);
 
     try {
-      console.log("==========================================");
-      console.log("🔐 INICIO LOGIN SUPERADMIN");
-      console.log("📧 Email:", loginForm.email);
-      console.log("==========================================");
+      console.log("=== LOGIN SUPERADMIN ===");
+      console.log("Email:", loginForm.email);
 
       // Intentar login
-      console.log("⏳ Llamando a supabase.auth.signInWithPassword...");
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: loginForm.email,
         password: loginForm.password,
       });
 
-      console.log("📥 Respuesta completa de signInWithPassword:");
-      console.log(JSON.stringify({ data: authData, error: authError }, null, 2));
+      console.log("Respuesta login:", { data: !!data, error: error?.message });
 
-      if (authError) {
-        console.error("❌ ERROR DE LOGIN:", authError.message);
-        console.log("Error completo:", authError);
-        
-        // Si el usuario no existe, crear uno nuevo
-        if (authError.message.includes("Invalid login credentials")) {
-          console.log("🆕 Usuario no existe. Creando SuperAdmin...");
+      if (error) {
+        // Si usuario no existe y es el email superadmin, crear
+        if (error.message.includes("Invalid login credentials") && 
+            loginForm.email === "superadmin@example.com") {
+          
+          console.log("Creando usuario SuperAdmin...");
           
           const { data: signupData, error: signupError } = await supabase.auth.signUp({
             email: loginForm.email,
@@ -57,93 +52,62 @@ export default function SuperAdminAuth() {
             },
           });
 
-          console.log("📥 Respuesta de signup:", JSON.stringify({ data: signupData, error: signupError }, null, 2));
+          if (signupError) throw signupError;
 
-          if (signupError) {
-            console.error("❌ ERROR AL CREAR:", signupError.message);
-            throw signupError;
-          }
+          console.log("SuperAdmin creado:", !!signupData.user);
 
-          if (!signupData.user) {
-            console.error("❌ No se creó el usuario");
-            throw new Error("Error al crear usuario SuperAdmin");
-          }
-
-          console.log("✅ SuperAdmin creado exitosamente");
-          console.log("👤 User ID:", signupData.user.id);
-          console.log("📧 Email:", signupData.user.email);
-          console.log("📝 Metadata:", JSON.stringify(signupData.user.user_metadata, null, 2));
-
-          // Check if email confirmation is required
           if (signupData.session) {
-            console.log("✅ Sesión creada automáticamente, redirigiendo...");
             toast({
-              title: "✅ SuperAdmin creado e iniciado",
-              description: "Redirigiendo al panel...",
+              title: "✅ SuperAdmin creado",
+              description: "Redirigiendo...",
             });
             
             setTimeout(() => {
-              console.log("⏰ Ejecutando redirección a /superadmin");
               router.push("/superadmin");
             }, 500);
             return;
           } else {
             toast({
               title: "✅ SuperAdmin creado",
-              description: "Ahora puedes iniciar sesión con las credenciales",
+              description: "Ahora inicia sesión",
             });
             setLoading(false);
             return;
           }
         }
         
-        throw authError;
+        throw error;
       }
 
-      console.log("✅ LOGIN EXITOSO");
-      console.log("==========================================");
-      console.log("👤 User completo:", JSON.stringify(authData.user, null, 2));
-      console.log("==========================================");
-      console.log("🔍 Verificando metadata:");
-      console.log("  - user_metadata:", JSON.stringify(authData.user?.user_metadata, null, 2));
-      console.log("  - is_superadmin value:", authData.user?.user_metadata?.is_superadmin);
-      console.log("  - Type:", typeof authData.user?.user_metadata?.is_superadmin);
-
-      // Verificar metadata (handle both boolean and string "true")
+      // Verificar is_superadmin
       const isSuperadmin = 
-        authData.user?.user_metadata?.is_superadmin === true || 
-        authData.user?.user_metadata?.is_superadmin === "true";
-        
-      console.log("👑 Resultado verificación SuperAdmin:", isSuperadmin);
+        data.user?.user_metadata?.is_superadmin === true || 
+        data.user?.user_metadata?.is_superadmin === "true";
+
+      console.log("is_superadmin:", data.user?.user_metadata?.is_superadmin);
+      console.log("Es SuperAdmin:", isSuperadmin);
 
       if (!isSuperadmin) {
-        console.error("❌ ACCESO DENEGADO - No es SuperAdmin");
-        console.log("Metadata completo:", authData.user?.user_metadata);
-        console.log("🚪 Cerrando sesión...");
         await supabase.auth.signOut();
-        throw new Error("Acceso denegado. Solo SuperAdmins pueden acceder.");
+        throw new Error("Acceso denegado. Solo SuperAdmins.");
       }
 
-      console.log("✅ VERIFICACIÓN SUPERADMIN PASADA");
-      console.log("🚀 Preparando redirección a /superadmin...");
+      console.log("✅ Login exitoso");
+      console.log("=====================");
 
       toast({
         title: "✅ Acceso concedido",
         description: "Bienvenido, SuperAdmin",
       });
-      
-      console.log("⏳ Esperando 500ms antes de redirigir...");
+
       setTimeout(() => {
-        console.log("⏰ Ejecutando router.push('/superadmin')");
         router.push("/superadmin");
-      }, 500);
+      }, 300);
 
     } catch (error: any) {
-      console.error("💥 ERROR FINAL:", error);
-      console.log("Error completo:", JSON.stringify(error, null, 2));
-      console.log("==========================================");
+      console.error("Error login:", error.message);
       toast({
-        title: "❌ Error de autenticación",
+        title: "❌ Error",
         description: error.message,
         variant: "destructive",
       });
@@ -185,7 +149,7 @@ export default function SuperAdminAuth() {
                 placeholder="superadmin@example.com"
                 value={loginForm.email}
                 onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
-                className="h-12 rounded-xl border-purple-500/20 focus:border-purple-500"
+                className="h-12 pl-10 rounded-xl border-purple-500/20 focus:border-purple-500"
                 required
               />
             </div>
@@ -217,7 +181,7 @@ export default function SuperAdminAuth() {
             {loading ? (
               <div className="flex items-center gap-2">
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                <span>Verificando acceso...</span>
+                <span>Verificando...</span>
               </div>
             ) : (
               "Acceder al Sistema"
@@ -229,7 +193,7 @@ export default function SuperAdminAuth() {
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Shield className="w-4 h-4" />
             <p>
-              Área restringida. Solo usuarios autorizados con permisos de SuperAdmin pueden acceder.
+              Área restringida. Solo usuarios autorizados con permisos de SuperAdmin.
             </p>
           </div>
         </div>

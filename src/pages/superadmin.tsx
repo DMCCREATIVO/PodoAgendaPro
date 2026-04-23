@@ -4,87 +4,79 @@ import { supabase } from "@/integrations/supabase/client";
 import { SuperAdminLayout } from "@/components/superadmin/SuperAdminLayout";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Building2, 
   Users, 
   TrendingUp, 
   Shield,
-  Plus,
-  Search,
-  MoreVertical,
   CheckCircle2,
-  XCircle,
-  AlertCircle
+  XCircle
 } from "lucide-react";
 import { SEO } from "@/components/SEO";
 
 export default function SuperAdmin() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
-    console.log("==========================================");
-    console.log("🛡️ SUPERADMIN PAGE - Iniciando verificación");
-    console.log("==========================================");
+    let isMounted = true;
 
-    const checkAuth = async () => {
+    const checkAccess = async () => {
       try {
-        // Get session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        console.log("=== VERIFICACIÓN SUPERADMIN ===");
         
-        console.log("📥 getSession result:");
-        console.log("  - Session exists:", !!session);
-        console.log("  - Error:", sessionError);
+        // Obtener sesión
+        const { data: { session }, error } = await supabase.auth.getSession();
         
-        if (sessionError) {
-          console.error("❌ Session error:", sessionError);
-          throw sessionError;
-        }
+        console.log("Sesión:", session ? "✅ Existe" : "❌ No existe");
+        console.log("Error:", error);
 
-        if (!session) {
-          console.log("❌ No session found - redirecting to login");
+        if (!isMounted) return;
+
+        // Si no hay sesión → redirigir
+        if (!session || error) {
+          console.log("→ Redirigiendo a /superadmin/auth (no hay sesión)");
           router.replace("/superadmin/auth");
           return;
         }
 
-        console.log("✅ Session found:");
-        console.log("  - User ID:", session.user.id);
-        console.log("  - Email:", session.user.email);
-        console.log("  - Full metadata:", JSON.stringify(session.user.user_metadata, null, 2));
-        
+        // Verificar flag is_superadmin
         const metadata = session.user.user_metadata || {};
         const isSuperadmin = metadata.is_superadmin === true || metadata.is_superadmin === "true";
         
-        console.log("🔍 SuperAdmin check:");
-        console.log("  - metadata.is_superadmin:", metadata.is_superadmin);
-        console.log("  - Type:", typeof metadata.is_superadmin);
-        console.log("  - Result:", isSuperadmin);
+        console.log("Metadata:", metadata);
+        console.log("is_superadmin:", metadata.is_superadmin);
+        console.log("Es SuperAdmin:", isSuperadmin);
 
         if (!isSuperadmin) {
-          console.error("❌ User is NOT a SuperAdmin");
-          console.log("🚪 Redirecting to /superadmin/auth");
+          console.log("→ Redirigiendo a /superadmin/auth (no es superadmin)");
           router.replace("/superadmin/auth");
           return;
         }
 
-        console.log("✅ SuperAdmin verified - showing panel");
-        console.log("==========================================");
-        setLoading(false);
+        console.log("✅ ACCESO AUTORIZADO");
+        console.log("==============================");
+        
+        if (isMounted) {
+          setAuthorized(true);
+          setLoading(false);
+        }
 
-      } catch (err: any) {
-        console.error("💥 Error in checkAuth:", err);
-        setError(err.message);
-        router.replace("/superadmin/auth");
+      } catch (err) {
+        console.error("Error en verificación:", err);
+        if (isMounted) {
+          router.replace("/superadmin/auth");
+        }
       }
     };
 
-    checkAuth();
+    checkAccess();
+
+    return () => {
+      isMounted = false;
+    };
   }, [router]);
 
   if (loading) {
@@ -98,21 +90,8 @@ export default function SuperAdmin() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-500/10 via-background to-purple-600/10 flex items-center justify-center">
-        <Card className="p-8 max-w-md">
-          <div className="text-center">
-            <XCircle className="w-16 h-16 mx-auto mb-4 text-destructive" />
-            <h2 className="text-xl font-bold mb-2">Error de Autenticación</h2>
-            <p className="text-muted-foreground mb-4">{error}</p>
-            <Button onClick={() => router.push("/superadmin/auth")}>
-              Volver al Login
-            </Button>
-          </div>
-        </Card>
-      </div>
-    );
+  if (!authorized) {
+    return null; // Redirigiendo...
   }
 
   return (
