@@ -54,7 +54,7 @@ const APPOINTMENT_TRENDS = {
   ],
   peakHours: [
     { hour: "09:00", count: 45 },
-    { hour: "10:00", count: 62 },
+    { hour: "10:30", count: 62 },
     { hour: "11:00", count: 58 },
     { hour: "12:00", count: 38 },
     { hour: "14:00", count: 52 },
@@ -333,11 +333,15 @@ export default function Admin() {
       const [hours, minutes] = appointmentForm.scheduled_time.split(':');
       scheduledAt.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
+      const selectedService = services.find(s => s.id === appointmentForm.service_id);
+      const duration_minutes = selectedService?.duration_minutes || 30;
+
       const appointmentData = {
         client_id: appointmentForm.client_id,
         service_id: appointmentForm.service_id,
         assigned_to: appointmentForm.assigned_to || null,
         scheduled_at: scheduledAt.toISOString(),
+        duration_minutes,
         notes: appointmentForm.notes || null,
         status: 'scheduled' as const,
       };
@@ -485,7 +489,7 @@ export default function Admin() {
               </div>
               <div>
                 <Label htmlFor="client-status">Estado</Label>
-                <Select value={clientForm.status} onValueChange={(value) => setClientForm({ ...clientForm, status: value })}>
+                <Select value={clientForm.status} onValueChange={(value: "lead" | "active" | "inactive") => setClientForm({ ...clientForm, status: value })}>
                   <SelectTrigger className="mt-2 rounded-xl">
                     <SelectValue />
                   </SelectTrigger>
