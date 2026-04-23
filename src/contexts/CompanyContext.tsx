@@ -27,7 +27,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   const loadCompanies = async () => {
     try {
       const companies = await companyService.getUserCompanies();
-      setAvailableCompanies(companies);
+      setCompanies(companies);
 
       // Set current company from localStorage or first available
       const stored = localStorage.getItem("currentCompanyId");
@@ -47,7 +47,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error("Error loading companies:", error);
       // Don't throw - just set empty state for public pages
-      setAvailableCompanies([]);
+      setCompanies([]);
       setCurrentCompany(null);
     }
   };
