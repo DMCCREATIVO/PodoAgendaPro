@@ -41,7 +41,7 @@ export default function SuperAdminAuth() {
         
         // Si el usuario no existe y es el email de superadmin, créalo
         if (authError.message.includes("Invalid login credentials") && 
-            loginForm.email === "superadmin@podospro.com") {
+            loginForm.email === "superadmin@example.com") {
           console.log("🆕 Usuario no existe. Creando SuperAdmin...");
           
           const { data: signupData, error: signupError } = await supabase.auth.signUp({
@@ -163,7 +163,7 @@ export default function SuperAdminAuth() {
               <Input
                 id="email"
                 type="email"
-                placeholder="superadmin@podospro.com"
+                placeholder="superadmin@example.com"
                 value={loginForm.email}
                 onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
                 className="h-12 rounded-xl border-purple-500/20 focus:border-purple-500"
