@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { useRouter } from "next/router";
 import { companyService } from "@/services/companyService";
 import type { Database } from "@/integrations/supabase/types";
+import { supabase } from "@/integrations/supabase/supabase";
 
 type Company = Database["public"]["Tables"]["companies"]["Row"];
 
@@ -26,6 +27,17 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   // Cargar empresas del usuario
   const loadCompanies = async () => {
     try {
+      // First check if there's an active session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        // No session - don't load companies
+        setCompanies([]);
+        setCurrentCompany(null);
+        setIsLoading(false);
+        return;
+      }
+
       const companies = await companyService.getUserCompanies();
       setCompanies(companies);
 
@@ -45,10 +57,12 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
         localStorage.setItem("currentCompanyId", companies[0].id);
       }
     } catch (error) {
-      console.error("Error loading companies:", error);
-      // Don't throw - just set empty state for public pages
+      // Silently handle errors - don't throw on public pages
+      console.log("CompanyContext: No companies loaded (public page or no session)");
       setCompanies([]);
       setCurrentCompany(null);
+    } finally {
+      setIsLoading(false);
     }
   };
 
