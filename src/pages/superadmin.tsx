@@ -18,9 +18,7 @@ import {
   Search,
   Plus,
   Edit,
-  Trash2,
   AlertCircle,
-  DollarSign
 } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { superadminService } from "@/services/superadminService";
@@ -30,10 +28,8 @@ export default function SuperAdmin() {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [authorized, setAuthorized] = useState(false);
   const [activeTab, setActiveTab] = useState("dashboard");
   
-  // Estados para datos de BD
   const [stats, setStats] = useState<any>(null);
   const [companies, setCompanies] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
@@ -45,33 +41,34 @@ export default function SuperAdmin() {
   }, []);
 
   useEffect(() => {
-    if (authorized) {
+    if (loading === false) {
       loadData();
     }
-  }, [authorized, activeTab]);
+  }, [activeTab, loading]);
 
   const checkAuth = async () => {
     try {
-      const { data: { session }, error } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (!session || error) {
+      if (!session) {
         router.replace("/superadmin/auth");
         return;
       }
 
-      const metadata = session.user.user_metadata || {};
-      const isSuperadmin = metadata.is_superadmin === true || metadata.is_superadmin === "true";
+      const { data: userData } = await supabase
+        .from("users")
+        .select("is_superadmin")
+        .eq("id", session.user.id)
+        .single();
       
-      if (!isSuperadmin) {
+      if (!userData?.is_superadmin) {
         router.replace("/superadmin/auth");
         return;
       }
       
-      setAuthorized(true);
       setLoading(false);
-
     } catch (err) {
-      console.error("Error en verificación:", err);
+      console.error("Error verificando auth:", err);
       router.replace("/superadmin/auth");
     }
   };
@@ -79,11 +76,12 @@ export default function SuperAdmin() {
   const loadData = async () => {
     try {
       if (activeTab === "dashboard") {
-        const systemStats = await superadminService.getSystemStats();
+        const [systemStats, allCompanies] = await Promise.all([
+          superadminService.getSystemStats(),
+          superadminService.getAllCompanies()
+        ]);
         setStats(systemStats);
-        
-        const allCompanies = await superadminService.getAllCompanies();
-        setCompanies(allCompanies.slice(0, 5)); // Últimas 5
+        setCompanies(allCompanies.slice(0, 5));
       } else if (activeTab === "empresas") {
         const allCompanies = await superadminService.getAllCompanies();
         setCompanies(allCompanies);
@@ -110,11 +108,11 @@ export default function SuperAdmin() {
       await superadminService.updateCompanyStatus(
         companyId, 
         newStatus as any, 
-        newStatus === "suspended" ? "Suspendida manualmente por SuperAdmin" : undefined
+        newStatus === "suspended" ? "Suspendida por SuperAdmin" : undefined
       );
       
       toast({
-        title: "✅ Estado actualizado",
+        title: "Estado actualizado",
         description: `Empresa ${newStatus === "active" ? "activada" : "suspendida"}`,
       });
       
@@ -132,10 +130,10 @@ export default function SuperAdmin() {
     try {
       if (currentStatus) {
         await superadminService.removeSuperAdmin(userId);
-        toast({ title: "✅ SuperAdmin removido" });
+        toast({ title: "SuperAdmin removido" });
       } else {
         await superadminService.makeSuperAdmin(userId);
-        toast({ title: "✅ SuperAdmin otorgado" });
+        toast({ title: "SuperAdmin otorgado" });
       }
       loadData();
     } catch (error: any) {
@@ -152,14 +150,10 @@ export default function SuperAdmin() {
       <div className="min-h-screen bg-gradient-to-br from-purple-500/10 via-background to-purple-600/10 flex items-center justify-center">
         <div className="text-center">
           <Shield className="w-16 h-16 mx-auto mb-4 text-purple-600 animate-pulse" />
-          <p className="text-muted-foreground">Verificando acceso SuperAdmin...</p>
+          <p className="text-muted-foreground">Verificando acceso...</p>
         </div>
       </div>
     );
-  }
-
-  if (!authorized) {
-    return null;
   }
 
   const filteredCompanies = companies.filter(c => 
@@ -177,7 +171,6 @@ export default function SuperAdmin() {
       <SEO title="Panel SuperAdmin - PodoAgenda Pro" />
       
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">
@@ -187,7 +180,7 @@ export default function SuperAdmin() {
               Gestión completa del sistema PodoAgenda Pro
             </p>
           </div>
-          <Badge variant="default" className="bg-gradient-to-r from-purple-600 to-purple-800 text-white px-4 py-2 text-sm">
+          <Badge variant="default" className="bg-gradient-to-r from-purple-600 to-purple-800 text-white px-4 py-2">
             <Shield className="w-4 h-4 mr-2" />
             SuperAdmin
           </Badge>
@@ -202,11 +195,9 @@ export default function SuperAdmin() {
             <TabsTrigger value="config">Configuración</TabsTrigger>
           </TabsList>
 
-          {/* DASHBOARD TAB */}
           <TabsContent value="dashboard" className="space-y-6">
             {stats && (
               <>
-                {/* KPIs */}
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                   <Card className="p-6">
                     <div className="flex items-center justify-between mb-2">
@@ -214,9 +205,7 @@ export default function SuperAdmin() {
                       <Building2 className="w-4 h-4 text-muted-foreground" />
                     </div>
                     <p className="text-3xl font-bold">{stats.total_companies}</p>
-                    <p className="text-xs text-green-600 mt-2">
-                      {stats.active_companies} activas
-                    </p>
+                    <p className="text-xs text-green-600 mt-2">{stats.active_companies} activas</p>
                   </Card>
 
                   <Card className="p-6">
@@ -225,9 +214,6 @@ export default function SuperAdmin() {
                       <Users className="w-4 h-4 text-muted-foreground" />
                     </div>
                     <p className="text-3xl font-bold">{stats.total_users}</p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      En todas las empresas
-                    </p>
                   </Card>
 
                   <Card className="p-6">
@@ -236,9 +222,6 @@ export default function SuperAdmin() {
                       <TrendingUp className="w-4 h-4 text-muted-foreground" />
                     </div>
                     <p className="text-3xl font-bold">{stats.total_appointments}</p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Sistema completo
-                    </p>
                   </Card>
 
                   <Card className="p-6">
@@ -247,15 +230,11 @@ export default function SuperAdmin() {
                       <CheckCircle2 className="w-4 h-4 text-muted-foreground" />
                     </div>
                     <p className="text-3xl font-bold">{stats.total_clients}</p>
-                    <p className="text-xs text-green-600 mt-2">
-                      Base de datos activa
-                    </p>
                   </Card>
                 </div>
 
-                {/* Empresas Recientes */}
                 <Card>
-                  <div className="p-6 border-b border-border">
+                  <div className="p-6 border-b">
                     <h3 className="font-semibold text-lg">Empresas Recientes</h3>
                   </div>
                   <div className="p-6">
@@ -271,19 +250,13 @@ export default function SuperAdmin() {
                               <p className="text-sm text-muted-foreground">/{empresa.slug}</p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-4">
-                            <Badge 
-                              className={
-                                empresa.status === "active" 
-                                  ? "bg-green-500/10 text-green-700 border-green-500/20"
-                                  : empresa.status === "trial"
-                                  ? "bg-blue-500/10 text-blue-700 border-blue-500/20"
-                                  : "bg-red-500/10 text-red-700 border-red-500/20"
-                              }
-                            >
-                              {empresa.status}
-                            </Badge>
-                          </div>
+                          <Badge className={
+                            empresa.status === "active" 
+                              ? "bg-green-500/10 text-green-700"
+                              : "bg-red-500/10 text-red-700"
+                          }>
+                            {empresa.status}
+                          </Badge>
                         </div>
                       ))}
                     </div>
@@ -293,7 +266,6 @@ export default function SuperAdmin() {
             )}
           </TabsContent>
 
-          {/* EMPRESAS TAB */}
           <TabsContent value="empresas" className="space-y-4">
             <div className="flex items-center justify-between">
               <div className="relative flex-1 max-w-sm">
@@ -305,10 +277,6 @@ export default function SuperAdmin() {
                   className="pl-10"
                 />
               </div>
-              <Button className="bg-purple-600 hover:bg-purple-700">
-                <Plus className="w-4 h-4 mr-2" />
-                Nueva Empresa
-              </Button>
             </div>
 
             <Card>
@@ -328,44 +296,33 @@ export default function SuperAdmin() {
                       <TableCell className="font-medium">{company.name}</TableCell>
                       <TableCell>/{company.slug}</TableCell>
                       <TableCell>
-                        <Badge
-                          className={
-                            company.status === "active"
-                              ? "bg-green-500/10 text-green-700"
-                              : company.status === "trial"
-                              ? "bg-blue-500/10 text-blue-700"
-                              : "bg-red-500/10 text-red-700"
-                          }
-                        >
+                        <Badge className={
+                          company.status === "active"
+                            ? "bg-green-500/10 text-green-700"
+                            : "bg-red-500/10 text-red-700"
+                        }>
                           {company.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        {new Date(company.created_at).toLocaleDateString()}
-                      </TableCell>
+                      <TableCell>{new Date(company.created_at).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleSuspendCompany(company.id, company.status)}
-                          >
-                            {company.status === "active" ? (
-                              <>
-                                <XCircle className="w-4 h-4 mr-1" />
-                                Suspender
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle2 className="w-4 h-4 mr-1" />
-                                Activar
-                              </>
-                            )}
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleSuspendCompany(company.id, company.status)}
+                        >
+                          {company.status === "active" ? (
+                            <>
+                              <XCircle className="w-4 h-4 mr-1" />
+                              Suspender
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="w-4 h-4 mr-1" />
+                              Activar
+                            </>
+                          )}
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -374,7 +331,6 @@ export default function SuperAdmin() {
             </Card>
           </TabsContent>
 
-          {/* USUARIOS TAB */}
           <TabsContent value="usuarios" className="space-y-4">
             <div className="relative max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -412,9 +368,7 @@ export default function SuperAdmin() {
                           <Badge variant="outline">No</Badge>
                         )}
                       </TableCell>
-                      <TableCell>
-                        {new Date(user.created_at).toLocaleDateString()}
-                      </TableCell>
+                      <TableCell>{new Date(user.created_at).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
                         <Button
                           variant="ghost"
@@ -431,11 +385,10 @@ export default function SuperAdmin() {
             </Card>
           </TabsContent>
 
-          {/* AUDITORIA TAB */}
           <TabsContent value="auditoria" className="space-y-4">
             <Card>
               <div className="p-6 border-b">
-                <h3 className="font-semibold text-lg">Registro de Acciones del Sistema</h3>
+                <h3 className="font-semibold text-lg">Registro de Acciones</h3>
               </div>
               <Table>
                 <TableHeader>
@@ -449,9 +402,7 @@ export default function SuperAdmin() {
                 <TableBody>
                   {auditLog.map((log) => (
                     <TableRow key={log.id}>
-                      <TableCell>
-                        {new Date(log.created_at).toLocaleString()}
-                      </TableCell>
+                      <TableCell>{new Date(log.created_at).toLocaleString()}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{log.action_type}</Badge>
                       </TableCell>
@@ -459,49 +410,15 @@ export default function SuperAdmin() {
                       <TableCell>{log.companies?.name || "N/A"}</TableCell>
                     </TableRow>
                   ))}
-                  {auditLog.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                        No hay registros de auditoría
-                      </TableCell>
-                    </TableRow>
-                  )}
                 </TableBody>
               </Table>
             </Card>
           </TabsContent>
 
-          {/* CONFIG TAB */}
           <TabsContent value="config">
             <Card className="p-6">
-              <div className="space-y-4">
-                <div>
-                  <h3 className="font-semibold text-lg mb-2">Configuración del Sistema</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Ajustes globales que afectan a todas las empresas del SaaS
-                  </p>
-                </div>
-                
-                <div className="border-t pt-4">
-                  <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
-                    <div>
-                      <p className="font-medium">Mantenimiento Programado</p>
-                      <p className="text-sm text-muted-foreground">Sistema en modo mantenimiento</p>
-                    </div>
-                    <Button variant="outline">Configurar</Button>
-                  </div>
-                </div>
-
-                <div className="border-t pt-4">
-                  <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
-                    <div>
-                      <p className="font-medium">Límites Globales</p>
-                      <p className="text-sm text-muted-foreground">Establecer límites por plan</p>
-                    </div>
-                    <Button variant="outline">Configurar</Button>
-                  </div>
-                </div>
-              </div>
+              <h3 className="font-semibold text-lg mb-4">Configuración Global</h3>
+              <p className="text-muted-foreground">Ajustes que afectan a todo el sistema</p>
             </Card>
           </TabsContent>
         </Tabs>
