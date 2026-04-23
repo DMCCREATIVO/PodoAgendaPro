@@ -25,15 +25,6 @@ export default function SuperAdminAuth() {
     try {
       console.log("🔐 Intentando login SuperAdmin con:", loginForm.email);
 
-      // Primero verificar si el usuario existe
-      const { data: users, error: userCheckError } = await supabase
-        .from("auth.users")
-        .select("email, raw_user_meta_data")
-        .eq("email", loginForm.email)
-        .limit(1);
-
-      console.log("👤 Usuario en BD:", users, userCheckError);
-
       // Intentar login
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: loginForm.email,
@@ -85,8 +76,11 @@ export default function SuperAdminAuth() {
 
       console.log("✅ Login exitoso:", authData);
 
-      // Verificar metadata
-      const isSuperadmin = authData.user?.user_metadata?.is_superadmin === true;
+      // Verificar metadata (handle both boolean and string "true")
+      const isSuperadmin = 
+        authData.user?.user_metadata?.is_superadmin === true || 
+        authData.user?.user_metadata?.is_superadmin === "true";
+        
       console.log("👑 Es SuperAdmin?", isSuperadmin, authData.user?.user_metadata);
 
       if (!isSuperadmin) {

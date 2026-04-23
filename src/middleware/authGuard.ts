@@ -38,8 +38,11 @@ export function useAuthGuard(requiredRole?: string) {
         console.log("✅ Sesión activa:", session.user.email);
         console.log("👤 User metadata:", session.user.user_metadata);
 
-        // Check SuperAdmin
-        const isSuperadmin = session.user.user_metadata?.is_superadmin === true;
+        // Check SuperAdmin (handle both boolean and string "true")
+        const isSuperadmin = 
+          session.user.user_metadata?.is_superadmin === true || 
+          session.user.user_metadata?.is_superadmin === "true";
+          
         console.log("👑 Es SuperAdmin?", isSuperadmin);
 
         if (requiredRole === "superadmin") {
