@@ -159,8 +159,7 @@ export default function TenantAuth({ company, allowRegistration, allowPatientLog
         .from("clients")
         .insert({
           company_id: company.id,
-          first_name: registerForm.full_name.split(" ")[0],
-          last_name: registerForm.full_name.split(" ").slice(1).join(" ") || "",
+          full_name: registerForm.full_name,
           email: registerForm.email,
           status: "active",
         });
