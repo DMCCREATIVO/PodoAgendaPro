@@ -56,7 +56,6 @@ export default function PublicAuth() {
           name: registerForm.company_name,
           slug: slug,
           owner_id: authData.user.id,
-          status: "active",
           phone: registerForm.phone,
           settings: {
             allow_patient_login: true,

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { supabase } from "@/integrations/supabase/client";
 
-export function useAuthGuard(requiredRole?: "superadmin" | "owner" | "admin" | "podiatrist" | "patient") {
+export function useAuthGuard(requiredRole?: string) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
