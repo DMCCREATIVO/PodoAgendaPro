@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card } from "@/components/ui/card";
@@ -15,6 +15,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, TrendingUp, Users, DollarSign, Clock, Plus, Edit, Trash2, Search, Eye, AlertCircle, CheckCircle, XCircle, User, Mail, Phone, MapPin, CreditCard, Filter, Activity, BarChart3, PieChart } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useCompanyId } from "@/hooks/useCompanyId";
+import { clientService } from "@/services/clientService";
+import { serviceService } from "@/services/serviceService";
+import { appointmentService } from "@/services/appointmentService";
+import { companyService } from "@/services/companyService";
+import { useToast } from "@/hooks/use-toast";
 
 // Mock data for demographics
 const DEMOGRAPHICS_DATA = {
@@ -115,12 +121,110 @@ const PAYMENT_STATUS = {
 
 export default function Admin() {
   const router = useRouter();
+  const { toast } = useToast();
+  const companyId = useCompanyId();
   const activeTab = (router.query.tab as string) || "dashboard";
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
 
+  // Real data states
+  const [clients, setClients] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [companyUsers, setCompanyUsers] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load data on mount and when company changes
+  useEffect(() => {
+    if (companyId) {
+      loadAllData();
+    }
+  }, [companyId]);
+
+  const loadAllData = async () => {
+    setIsLoading(true);
+    try {
+      const [clientsData, servicesData, appointmentsData, usersData] = await Promise.all([
+        clientService.getClients(companyId),
+        serviceService.getServices(companyId),
+        appointmentService.getAppointments(companyId),
+        companyService.getCompanyUsers(companyId),
+      ]);
+
+      setClients(clientsData);
+      setServices(servicesData);
+      setAppointments(appointmentsData);
+      setCompanyUsers(usersData);
+    } catch (error: any) {
+      toast({
+        title: "Error cargando datos",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateClient = async (clientData: any) => {
+    try {
+      await clientService.createClient(companyId, clientData);
+      await loadAllData();
+      toast({ title: "Cliente creado exitosamente" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleCreateService = async (serviceData: any) => {
+    try {
+      await serviceService.createService(companyId, serviceData);
+      await loadAllData();
+      toast({ title: "Servicio creado exitosamente" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleCreateAppointment = async (appointmentData: any) => {
+    try {
+      await appointmentService.createAppointment(companyId, appointmentData);
+      await loadAllData();
+      toast({ title: "Cita creada exitosamente" });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  // Calculate real KPIs
+  const todayAppointments = appointments.filter(a => {
+    const today = new Date().toDateString();
+    const aptDate = new Date(a.scheduled_at).toDateString();
+    return aptDate === today;
+  });
+
+  const completedThisMonth = appointments.filter(a => {
+    const now = new Date();
+    const aptDate = new Date(a.scheduled_at);
+    return aptDate.getMonth() === now.getMonth() && 
+           aptDate.getFullYear() === now.getFullYear() &&
+           a.status === 'completed';
+  });
+
+  const monthRevenue = completedThisMonth.reduce((sum, apt) => {
+    const service = services.find(s => s.id === apt.service_id);
+    return sum + (service?.price || 0);
+  }, 0);
+
+  const newClientsThisMonth = clients.filter(c => {
+    const now = new Date();
+    const created = new Date(c.created_at);
+    return created.getMonth() === now.getMonth() && 
+           created.getFullYear() === now.getFullYear();
+  });
+
   return (
     <AdminLayout activeTab={activeTab}>
-      {/* Dashboard Tab - Enhanced with Analytics */}
+      {/* Dashboard Tab - Keep analytics as is, just update KPI cards with real data */}
       {activeTab === "dashboard" && (
         <div className="space-y-8 animate-fade-in">
           <div>
@@ -128,7 +232,7 @@ export default function Admin() {
             <p className="text-muted-foreground">Métricas y análisis del sistema</p>
           </div>
 
-          {/* KPI Cards */}
+          {/* Real KPI Cards */}
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card className="p-6 soft-shadow border-0 hover-lift">
               <div className="flex items-center justify-between mb-4">
@@ -136,10 +240,10 @@ export default function Admin() {
                   <Calendar className="w-6 h-6 text-primary" />
                 </div>
                 <Badge variant="outline" className="rounded-full bg-green-100 text-green-700 border-green-200">
-                  +12%
+                  Hoy
                 </Badge>
               </div>
-              <h3 className="font-heading font-bold text-2xl mb-1">24</h3>
+              <h3 className="font-heading font-bold text-2xl mb-1">{todayAppointments.length}</h3>
               <p className="text-sm text-muted-foreground">Citas Hoy</p>
             </Card>
 
@@ -152,7 +256,9 @@ export default function Admin() {
                   +18%
                 </Badge>
               </div>
-              <h3 className="font-heading font-bold text-2xl mb-1">$5.1M</h3>
+              <h3 className="font-heading font-bold text-2xl mb-1">
+                ${(monthRevenue / 1000).toFixed(1)}K
+              </h3>
               <p className="text-sm text-muted-foreground">Ingresos Mes</p>
             </Card>
 
@@ -162,10 +268,10 @@ export default function Admin() {
                   <Users className="w-6 h-6 text-blue-500" />
                 </div>
                 <Badge variant="outline" className="rounded-full bg-green-100 text-green-700 border-green-200">
-                  +8%
+                  Nuevos
                 </Badge>
               </div>
-              <h3 className="font-heading font-bold text-2xl mb-1">43</h3>
+              <h3 className="font-heading font-bold text-2xl mb-1">{newClientsThisMonth.length}</h3>
               <p className="text-sm text-muted-foreground">Pacientes Nuevos</p>
             </Card>
 
@@ -175,14 +281,17 @@ export default function Admin() {
                   <TrendingUp className="w-6 h-6 text-orange-500" />
                 </div>
                 <Badge variant="outline" className="rounded-full bg-green-100 text-green-700 border-green-200">
-                  88%
+                  {Math.round((completedThisMonth.length / (appointments.length || 1)) * 100)}%
                 </Badge>
               </div>
-              <h3 className="font-heading font-bold text-2xl mb-1">88%</h3>
-              <p className="text-sm text-muted-foreground">Tasa Ocupación</p>
+              <h3 className="font-heading font-bold text-2xl mb-1">
+                {Math.round((completedThisMonth.length / (appointments.length || 1)) * 100)}%
+              </h3>
+              <p className="text-sm text-muted-foreground">Tasa Completitud</p>
             </Card>
           </div>
 
+          {/* Keep analytics tabs as they were - they use mock data which is fine for demo */}
           {/* Analytics Tabs */}
           <Tabs defaultValue="trends" className="w-full">
             <TabsList className="grid w-full grid-cols-3 rounded-2xl p-1 bg-muted/30">
@@ -679,7 +788,7 @@ export default function Admin() {
         </div>
       )}
 
-      {/* Pacientes Tab */}
+      {/* Pacientes Tab - Use real clients data */}
       {activeTab === "pacientes" && (
         <div className="space-y-6 animate-fade-in">
           <div className="flex items-center justify-between">
@@ -687,74 +796,95 @@ export default function Admin() {
               <h1 className="font-heading font-bold text-3xl mb-2">Pacientes</h1>
               <p className="text-muted-foreground">Gestión de pacientes</p>
             </div>
-            <Button className="rounded-2xl shadow-lg shadow-primary/20">
+            <Button className="rounded-xl shadow-lg shadow-primary/20">
               <Plus className="w-4 h-4 mr-2" />
               Nuevo Paciente
             </Button>
           </div>
 
           <Card className="p-6 soft-shadow border-0">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <Input placeholder="Buscar paciente..." className="pl-10 rounded-xl h-12" />
+            <div className="mb-6">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
+                <Input
+                  placeholder="Buscar pacientes..."
+                  className="pl-10 rounded-xl"
+                />
               </div>
-              <Button variant="outline" className="rounded-xl h-12">
-                <Filter className="w-4 h-4 mr-2" />
-                Filtros
-              </Button>
             </div>
 
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Contacto</TableHead>
-                  <TableHead>Última Visita</TableHead>
-                  <TableHead>Total Visitas</TableHead>
-                  <TableHead>Saldo</TableHead>
-                  <TableHead>Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {MOCK_PATIENTS.map((patient) => (
-                  <TableRow key={patient.id}>
-                    <TableCell className="font-medium">{patient.name}</TableCell>
-                    <TableCell>
-                      <div className="space-y-1 text-sm">
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Mail className="w-3 h-3" />
-                          <span>{patient.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Phone className="w-3 h-3" />
-                          <span>{patient.phone}</span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{patient.lastVisit}</TableCell>
-                    <TableCell>{patient.totalVisits}</TableCell>
-                    <TableCell>
-                      {patient.balance > 0 ? (
-                        <span className="text-destructive font-semibold">${patient.balance.toLocaleString()}</span>
-                      ) : (
-                        <span className="text-accent">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="icon" className="rounded-xl">
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="rounded-xl">
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+            {isLoading ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">Cargando pacientes...</p>
+              </div>
+            ) : clients.length === 0 ? (
+              <div className="text-center py-12">
+                <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No hay pacientes registrados</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Paciente</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Teléfono</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Etiquetas</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {clients.map((client) => (
+                    <TableRow key={client.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <User className="w-5 h-5 text-primary" />
+                          </div>
+                          <span className="font-semibold">{client.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{client.email || "-"}</TableCell>
+                      <TableCell>{client.phone || "-"}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "rounded-full",
+                            client.status === "active" && "bg-green-100 text-green-700 border-green-200",
+                            client.status === "lead" && "bg-blue-100 text-blue-700 border-blue-200",
+                            client.status === "inactive" && "bg-gray-100 text-gray-700 border-gray-200"
+                          )}
+                        >
+                          {client.status === "active" ? "Activo" : 
+                           client.status === "lead" ? "Lead" : "Inactivo"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          {client.tags?.map((tag: string) => (
+                            <Badge key={tag} variant="outline" className="rounded-full text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button variant="ghost" size="sm" className="rounded-lg">
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="rounded-lg">
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </Card>
         </div>
       )}
