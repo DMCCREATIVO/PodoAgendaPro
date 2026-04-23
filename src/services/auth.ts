@@ -31,13 +31,19 @@ export const authService = {
         .single();
 
       if (userError || !user) {
-        return { success: false, error: "Usuario no encontrado" };
+        return { 
+          success: false, 
+          error: "Usuario no encontrado. Verifica que el email esté escrito correctamente (ejemplo: superadmin@demo.com)" 
+        };
       }
 
       // 2. Verificar contraseña (por ahora, demo password)
       // TODO: En producción, implementar bcrypt real
       if (password !== "Admin123!") {
-        return { success: false, error: "Contraseña incorrecta" };
+        return { 
+          success: false, 
+          error: "Contraseña incorrecta. La contraseña demo es: Admin123!" 
+        };
       }
 
       // 3. Determinar rol
