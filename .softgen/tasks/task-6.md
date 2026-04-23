@@ -1,7 +1,7 @@
 ---
 title: Patient Portal
 status: done
-priority: medium
+priority: high
 type: feature
 tags: [patient, portal]
 created_by: agent

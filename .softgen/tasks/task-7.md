@@ -1,9 +1,9 @@
 ---
-title: Availability Page (Shareable)
+title: Patient Detail Page
 status: done
 priority: medium
 type: feature
-tags: [availability, marketing, booking]
+tags: [patient, clinical, history]
 created_by: agent
 created_at: 2026-04-22T23:27:36Z
 position: 7
