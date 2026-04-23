@@ -29,11 +29,25 @@ import {
 import { cn } from "@/lib/utils";
 import { superadminService } from "@/services/superadminService";
 import { useToast } from "@/hooks/use-toast";
+import { useAuthGuard } from "@/middleware/authGuard";
 
 export default function SuperAdmin() {
   const router = useRouter();
   const { toast } = useToast();
+  const { loading, authorized } = useAuthGuard("superadmin");
   const activeTab = (router.query.tab as string) || "dashboard";
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
+
+  if (!authorized) {
+    return null;
+  }
 
   const [stats, setStats] = useState<any>(null);
   const [companies, setCompanies] = useState<any[]>([]);

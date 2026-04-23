@@ -20,12 +20,16 @@ El sistema tiene **2 puntos de entrada completamente separados**:
 ## 👑 SUPERADMIN (Acceso Global)
 
 ### **Cómo Acceder:**
-1. Ir a: `/auth`
-2. Verás: Login simple (NO hay selector de roles)
+1. Ir a: `/superadmin/auth` (URL exclusiva y segura)
+2. Verás: Login simple para SuperAdmin (púrpura)
 3. Email: `superadmin@podospro.com`
 4. Contraseña: `PodosPro2024!Super`
-5. Click "Iniciar Sesión"
+5. Click "Acceder al Sistema"
 6. Redirección automática a `/superadmin`
+
+**IMPORTANTE:** La URL `/superadmin/auth` es exclusiva para SuperAdmin. No confundir con:
+- `/auth` → Registro público de nuevas empresas
+- `/[slug]/auth` → Login de empresas (podólogos/pacientes)
 
 ### **Panel SuperAdmin:**
 - Sidebar morado con gradiente
