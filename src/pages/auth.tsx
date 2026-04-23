@@ -192,9 +192,9 @@ export default function Auth() {
         description: "Tu cuenta ha sido creada. Redirigiendo...",
       });
 
-      // Redirect to admin panel
+      // Redirect to onboarding
       setTimeout(() => {
-        router.push("/admin");
+        router.push("/onboarding");
       }, 1500);
     } catch (error: any) {
       toast({
