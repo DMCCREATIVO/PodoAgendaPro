@@ -6,189 +6,278 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserCog, Stethoscope, User, ArrowRight, Lock, Mail } from "lucide-react";
+import { UserCog, Stethoscope, User, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { authService } from "@/services/authService";
+import { useToast } from "@/hooks/use-toast";
 
-const ROLES = [
-  {
-    id: "admin",
-    title: "Administrador",
-    description: "Gestión completa del sistema",
-    icon: UserCog,
-    color: "from-primary to-primary/80",
-    route: "/admin",
-  },
-  {
-    id: "podologo",
-    title: "Podólogo",
-    description: "Panel clínico y atención",
-    icon: Stethoscope,
-    color: "from-accent to-accent/80",
-    route: "/podologo",
-  },
-  {
-    id: "paciente",
-    title: "Paciente",
-    description: "Portal personal",
-    icon: User,
-    color: "from-chart-3 to-chart-3/80",
-    route: "/cliente",
-  },
-];
+type Role = "admin" | "podiatrist" | "patient";
+type AuthMode = "login" | "register";
 
 export default function Auth() {
   const router = useRouter();
-  const [selectedRole, setSelectedRole] = useState<string | null>(null);
-  const [showLogin, setShowLogin] = useState(false);
-  const [credentials, setCredentials] = useState({ email: "", password: "" });
+  const { toast } = useToast();
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [authMode, setAuthMode] = useState<AuthMode>("login");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleRoleSelect = (roleId: string) => {
-    setSelectedRole(roleId);
-    setShowLogin(true);
-  };
+  // Form state
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [companyName, setCompanyName] = useState("");
 
-  const handleLogin = () => {
-    const role = ROLES.find(r => r.id === selectedRole);
-    if (role) {
-      // Mock auth - in real system would validate credentials
-      router.push(role.route);
+  const roles = [
+    {
+      id: "admin" as Role,
+      title: "Administrador",
+      description: "Gestión completa de la clínica",
+      icon: UserCog,
+      redirect: "/admin",
+    },
+    {
+      id: "podiatrist" as Role,
+      title: "Podólogo",
+      description: "Atención clínica y pacientes",
+      icon: Stethoscope,
+      redirect: "/podologo",
+    },
+    {
+      id: "patient" as Role,
+      title: "Paciente",
+      description: "Mis citas e historial",
+      icon: User,
+      redirect: "/cliente",
+    },
+  ];
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      await authService.signIn(email, password);
+      
+      toast({
+        title: "¡Bienvenido!",
+        description: "Inicio de sesión exitoso",
+      });
+
+      const roleData = roles.find((r) => r.id === selectedRole);
+      if (roleData) {
+        router.push(roleData.redirect);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Credenciales inválidas",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const selectedRoleData = ROLES.find(r => r.id === selectedRole);
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const result = await authService.signUpWithCompany(
+        email,
+        password,
+        fullName,
+        companyName
+      );
+
+      toast({
+        title: "¡Registro exitoso!",
+        description: `Empresa "${companyName}" creada con éxito`,
+      });
+
+      // Redirect to admin panel
+      router.push("/admin");
+    } catch (error: any) {
+      toast({
+        title: "Error en registro",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background">
       <Navigation />
-      
-      <div className="pt-32 pb-20 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center space-y-4 mb-12">
-            <h1 className="font-heading font-bold text-4xl">Acceso al Sistema</h1>
-            <p className="text-muted-foreground text-lg">
-              {!showLogin ? "Selecciona tu tipo de usuario" : "Ingresa tus credenciales"}
-            </p>
-          </div>
 
-          {!showLogin ? (
-            <div className="grid md:grid-cols-3 gap-6 animate-fade-in">
-              {ROLES.map((role) => (
-                <Card
-                  key={role.id}
-                  className={cn(
-                    "p-8 cursor-pointer transition-all duration-300 hover-lift group",
-                    "hover:shadow-2xl hover:border-primary/50",
-                    selectedRole === role.id && "border-2 border-primary shadow-xl shadow-primary/20 scale-105"
-                  )}
-                  onClick={() => handleRoleSelect(role.id)}
-                >
-                  <div className="space-y-6">
-                    <div className={cn(
-                      "w-20 h-20 rounded-3xl flex items-center justify-center mx-auto",
-                      "bg-gradient-to-br transition-transform duration-300",
-                      role.color,
-                      "group-hover:scale-110"
-                    )}>
-                      <role.icon className="w-10 h-10 text-white" />
-                    </div>
-                    
-                    <div className="text-center space-y-2">
-                      <h3 className="font-heading font-bold text-2xl">{role.title}</h3>
-                      <p className="text-muted-foreground">{role.description}</p>
-                    </div>
+      <div className="container mx-auto px-4 py-24">
+        <div className="max-w-4xl mx-auto">
+          {!selectedRole ? (
+            <div className="animate-fade-in">
+              <div className="text-center mb-12">
+                <h1 className="font-heading font-bold text-4xl mb-4">
+                  Acceso al Sistema
+                </h1>
+                <p className="text-muted-foreground text-lg">
+                  Selecciona tu rol para continuar
+                </p>
+              </div>
 
-                    <Button
-                      variant={selectedRole === role.id ? "default" : "outline"}
-                      className="w-full rounded-2xl h-12 transition-all"
-                    >
-                      {selectedRole === role.id ? "Continuar" : "Seleccionar"}
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                  </div>
-                </Card>
-              ))}
+              <div className="grid md:grid-cols-3 gap-6">
+                {roles.map((role) => (
+                  <Card
+                    key={role.id}
+                    className="p-8 soft-shadow border-2 border-transparent hover:border-primary cursor-pointer transition-all duration-300 hover:scale-105 group"
+                    onClick={() => setSelectedRole(role.id)}
+                  >
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                      <role.icon className="w-8 h-8 text-white" />
+                    </div>
+                    <h3 className="font-heading font-bold text-xl mb-2 text-center">
+                      {role.title}
+                    </h3>
+                    <p className="text-sm text-muted-foreground text-center">
+                      {role.description}
+                    </p>
+                  </Card>
+                ))}
+              </div>
             </div>
           ) : (
-            <Card className="max-w-md mx-auto p-8 soft-shadow animate-slide-up">
-              <div className="space-y-6">
-                {selectedRoleData && (
-                  <div className="text-center space-y-4">
-                    <div className={cn(
-                      "w-16 h-16 rounded-2xl flex items-center justify-center mx-auto",
-                      "bg-gradient-to-br",
-                      selectedRoleData.color
-                    )}>
-                      <selectedRoleData.icon className="w-8 h-8 text-white" />
-                    </div>
-                    <div>
-                      <h2 className="font-heading font-bold text-2xl">{selectedRoleData.title}</h2>
-                      <p className="text-muted-foreground text-sm">{selectedRoleData.description}</p>
-                    </div>
-                  </div>
-                )}
+            <div className="animate-fade-in">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setSelectedRole(null);
+                  setAuthMode("login");
+                }}
+                className="mb-6 rounded-xl"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Cambiar rol
+              </Button>
 
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="flex items-center gap-2">
-                      <Mail className="w-4 h-4" />
-                      Correo electrónico
-                    </Label>
+              <Card className="max-w-md mx-auto p-8 soft-shadow border-0">
+                <div className="text-center mb-8">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mx-auto mb-4">
+                    {(() => {
+                      const RoleIcon = roles.find((r) => r.id === selectedRole)
+                        ?.icon;
+                      return RoleIcon ? (
+                        <RoleIcon className="w-8 h-8 text-white" />
+                      ) : null;
+                    })()}
+                  </div>
+                  <h2 className="font-heading font-bold text-2xl mb-2">
+                    {authMode === "login" ? "Iniciar Sesión" : "Crear Cuenta"}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {roles.find((r) => r.id === selectedRole)?.title}
+                  </p>
+                </div>
+
+                {/* Mode Toggle */}
+                <div className="flex items-center justify-center gap-2 mb-6">
+                  <Button
+                    variant={authMode === "login" ? "default" : "ghost"}
+                    onClick={() => setAuthMode("login")}
+                    className="rounded-xl"
+                  >
+                    Ingresar
+                  </Button>
+                  <Button
+                    variant={authMode === "register" ? "default" : "ghost"}
+                    onClick={() => setAuthMode("register")}
+                    className="rounded-xl"
+                  >
+                    Registrarse
+                  </Button>
+                </div>
+
+                <form onSubmit={authMode === "login" ? handleLogin : handleRegister}>
+                  {authMode === "register" && (
+                    <>
+                      <div className="mb-4">
+                        <Label htmlFor="fullName">Nombre Completo</Label>
+                        <Input
+                          id="fullName"
+                          type="text"
+                          placeholder="Juan Pérez"
+                          value={fullName}
+                          onChange={(e) => setFullName(e.target.value)}
+                          required
+                          className="mt-2 rounded-xl"
+                        />
+                      </div>
+
+                      <div className="mb-4">
+                        <Label htmlFor="companyName">Nombre de la Empresa</Label>
+                        <Input
+                          id="companyName"
+                          type="text"
+                          placeholder="Clínica Podológica"
+                          value={companyName}
+                          onChange={(e) => setCompanyName(e.target.value)}
+                          required
+                          className="mt-2 rounded-xl"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <div className="mb-4">
+                    <Label htmlFor="email">Email</Label>
                     <Input
                       id="email"
                       type="email"
-                      placeholder="ejemplo@correo.com"
-                      value={credentials.email}
-                      onChange={(e) => setCredentials({ ...credentials, email: e.target.value })}
-                      className="rounded-xl h-12"
+                      placeholder="email@ejemplo.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="mt-2 rounded-xl"
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="password" className="flex items-center gap-2">
-                      <Lock className="w-4 h-4" />
-                      Contraseña
-                    </Label>
+                  <div className="mb-6">
+                    <Label htmlFor="password">Contraseña</Label>
                     <Input
                       id="password"
                       type="password"
                       placeholder="••••••••"
-                      value={credentials.password}
-                      onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
-                      className="rounded-xl h-12"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="mt-2 rounded-xl"
                     />
                   </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Button
-                    onClick={handleLogin}
-                    className="w-full rounded-2xl h-12 shadow-lg shadow-primary/30"
-                  >
-                    Ingresar
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
 
                   <Button
-                    variant="outline"
-                    onClick={() => {
-                      setShowLogin(false);
-                      setSelectedRole(null);
-                      setCredentials({ email: "", password: "" });
-                    }}
-                    className="w-full rounded-2xl h-12"
+                    type="submit"
+                    className="w-full rounded-xl h-12 text-base shadow-lg shadow-primary/20"
+                    disabled={isLoading}
                   >
-                    Volver
+                    {isLoading
+                      ? "Procesando..."
+                      : authMode === "login"
+                      ? "Ingresar"
+                      : "Crear Cuenta"}
                   </Button>
-                </div>
 
-                <div className="text-center text-sm text-muted-foreground">
-                  <p>¿Olvidaste tu contraseña?</p>
-                  <Button variant="link" className="text-primary p-0 h-auto">
-                    Recuperar acceso
-                  </Button>
-                </div>
-              </div>
-            </Card>
+                  {authMode === "login" && (
+                    <div className="text-center mt-4">
+                      <a
+                        href="#"
+                        className="text-sm text-primary hover:underline"
+                      >
+                        ¿Olvidaste tu contraseña?
+                      </a>
+                    </div>
+                  )}
+                </form>
+              </Card>
+            </div>
           )}
         </div>
       </div>
