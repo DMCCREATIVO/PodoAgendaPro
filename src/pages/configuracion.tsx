@@ -28,12 +28,10 @@ export default function Configuracion() {
   const companyId = useCompanyId();
   const activeTab = (router.query.tab as string) || "perfil";
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [user, setUser] = useState<any>(null);
   const [company, setCompany] = useState<any>(null);
 
-  // Profile form state
   const [profileForm, setProfileForm] = useState({
     full_name: "",
     email: "",
@@ -41,7 +39,6 @@ export default function Configuracion() {
     avatar_url: "",
   });
 
-  // Company form state
   const [companyForm, setCompanyForm] = useState({
     name: "",
     description: "",
@@ -55,6 +52,23 @@ export default function Configuracion() {
     logo_url: "",
   });
 
+  const [brandingForm, setBrandingForm] = useState({
+    primary_color: "#2563EB",
+    secondary_color: "#22C55E",
+    accent_color: "#F59E0B",
+    logo_url: "",
+    favicon_url: "",
+    custom_domain: "",
+  });
+
+  const [settingsForm, setSettingsForm] = useState({
+    booking_enabled: true,
+    requires_approval: false,
+    auto_reminders: true,
+    allow_cancellations: true,
+    cancellation_hours: 2,
+  });
+
   useEffect(() => {
     loadData();
   }, [companyId]);
@@ -62,29 +76,18 @@ export default function Configuracion() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      // Load user data
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) {
-        router.push('/auth');
+        router.push("/auth");
         return;
       }
 
-      // Load profile
-      const { data: profile } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', authUser.id)
-        .single();
-
-      if (profile) {
-        setUser(profile);
-        setProfileForm({
-          full_name: profile.full_name || "",
-          email: authUser.email || "",
-          phone: profile.phone || "",
-          avatar_url: profile.avatar_url || "",
-        });
-      }
+      setProfileForm({
+        full_name: authUser.user_metadata?.full_name || "",
+        email: authUser.email || "",
+        phone: authUser.user_metadata?.phone || "",
+        avatar_url: authUser.user_metadata?.avatar_url || "",
+      });
 
       // Load company data
       if (companyId) {
@@ -92,6 +95,8 @@ export default function Configuracion() {
         setCompany(companyData);
         
         const metadata = (companyData.metadata as any) || {};
+        const branding = metadata.branding || {};
+        const settings = metadata.settings || {};
         
         setCompanyForm({
           name: companyData.name || "",
@@ -105,10 +110,27 @@ export default function Configuracion() {
           opening_hours: metadata.opening_hours || "",
           logo_url: companyData.logo_url || "",
         });
+
+        setBrandingForm({
+          primary_color: branding.primary_color || "#2563EB",
+          secondary_color: branding.secondary_color || "#22C55E",
+          accent_color: branding.accent_color || "#F59E0B",
+          logo_url: branding.logo_url || companyData.logo_url || "",
+          favicon_url: branding.favicon_url || "",
+          custom_domain: branding.custom_domain || "",
+        });
+
+        setSettingsForm({
+          booking_enabled: settings.booking_enabled ?? true,
+          requires_approval: settings.requires_approval ?? false,
+          auto_reminders: settings.auto_reminders ?? true,
+          allow_cancellations: settings.allow_cancellations ?? true,
+          cancellation_hours: settings.cancellation_hours || 2,
+        });
       }
     } catch (error: any) {
       toast({
-        title: "Error cargando datos",
+        title: "Error cargando configuración",
         description: error.message,
         variant: "destructive",
       });
@@ -207,6 +229,69 @@ export default function Configuracion() {
     }
   };
 
+  const handleSaveBranding = async () => {
+    if (!companyId) return;
+    
+    setIsSaving(true);
+    try {
+      const metadata = (company?.metadata as any) || {};
+      
+      await companyService.updateCompany(companyId, {
+        logo_url: brandingForm.logo_url,
+        metadata: {
+          ...metadata,
+          branding: brandingForm,
+        }
+      });
+      
+      toast({
+        title: "Branding actualizado",
+        description: "Los colores y diseño de tu clínica han sido guardados",
+      });
+
+      await loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error guardando branding",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    if (!companyId) return;
+    
+    setIsSaving(true);
+    try {
+      const metadata = (company?.metadata as any) || {};
+      
+      await companyService.updateCompany(companyId, {
+        metadata: {
+          ...metadata,
+          settings: settingsForm,
+        }
+      });
+      
+      toast({
+        title: "Configuración guardada",
+        description: "Las preferencias de tu clínica han sido actualizadas",
+      });
+
+      await loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error guardando configuración",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -265,28 +350,21 @@ export default function Configuracion() {
 
   return (
     <AdminLayout activeTab="configuracion">
-      <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+      <div className="max-w-5xl mx-auto space-y-6 animate-fade-in">
         {/* Header */}
         <div>
           <h1 className="font-heading font-bold text-3xl mb-2">Configuración</h1>
-          <p className="text-muted-foreground">Gestiona tu perfil y los datos de la empresa</p>
+          <p className="text-muted-foreground">Gestiona tu perfil, empresa y preferencias</p>
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={(tab) => router.push(`?tab=${tab}`)}>
-          <TabsList className="grid w-full grid-cols-3 rounded-2xl">
-            <TabsTrigger value="perfil" className="rounded-xl">
-              <User className="w-4 h-4 mr-2" />
-              Perfil Personal
-            </TabsTrigger>
-            <TabsTrigger value="empresa" className="rounded-xl">
-              <Building2 className="w-4 h-4 mr-2" />
-              Datos de Empresa
-            </TabsTrigger>
-            <TabsTrigger value="seguridad" className="rounded-xl">
-              <Shield className="w-4 h-4 mr-2" />
-              Seguridad
-            </TabsTrigger>
+        <Tabs value={activeTab} onValueChange={(value) => router.push(`?tab=${value}`)} className="w-full">
+          <TabsList className="grid w-full grid-cols-5 rounded-2xl p-1 bg-muted/50">
+            <TabsTrigger value="perfil" className="rounded-xl">Perfil Personal</TabsTrigger>
+            <TabsTrigger value="empresa" className="rounded-xl">Datos Empresa</TabsTrigger>
+            <TabsTrigger value="branding" className="rounded-xl">Branding</TabsTrigger>
+            <TabsTrigger value="ajustes" className="rounded-xl">Ajustes</TabsTrigger>
+            <TabsTrigger value="seguridad" className="rounded-xl">Seguridad</TabsTrigger>
           </TabsList>
 
           {/* Perfil Personal Tab */}
@@ -614,6 +692,269 @@ export default function Configuracion() {
                     {isSaving ? "Guardando..." : "Guardar Cambios"}
                   </Button>
                 </div>
+              </div>
+            </Card>
+          </TabsContent>
+
+          {/* Branding Tab */}
+          <TabsContent value="branding" className="space-y-6">
+            <Card className="p-6 soft-shadow border-0">
+              <h2 className="font-heading font-bold text-xl mb-6">Personalización Visual</h2>
+
+              <div className="space-y-6">
+                {/* Color Preview */}
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="text-center">
+                    <div 
+                      className="w-full h-20 rounded-2xl mb-2 shadow-lg"
+                      style={{ backgroundColor: brandingForm.primary_color }}
+                    />
+                    <p className="text-sm font-medium">Color Principal</p>
+                  </div>
+                  <div className="text-center">
+                    <div 
+                      className="w-full h-20 rounded-2xl mb-2 shadow-lg"
+                      style={{ backgroundColor: brandingForm.secondary_color }}
+                    />
+                    <p className="text-sm font-medium">Color Secundario</p>
+                  </div>
+                  <div className="text-center">
+                    <div 
+                      className="w-full h-20 rounded-2xl mb-2 shadow-lg"
+                      style={{ backgroundColor: brandingForm.accent_color }}
+                    />
+                    <p className="text-sm font-medium">Color Acento</p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Color Pickers */}
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div>
+                    <Label htmlFor="primary-color">Color Principal</Label>
+                    <div className="flex gap-2 mt-2">
+                      <Input
+                        id="primary-color"
+                        type="color"
+                        value={brandingForm.primary_color}
+                        onChange={(e) => setBrandingForm({ ...brandingForm, primary_color: e.target.value })}
+                        className="w-16 h-12 rounded-xl cursor-pointer"
+                      />
+                      <Input
+                        type="text"
+                        value={brandingForm.primary_color}
+                        onChange={(e) => setBrandingForm({ ...brandingForm, primary_color: e.target.value })}
+                        className="rounded-xl"
+                        placeholder="#2563EB"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="secondary-color">Color Secundario</Label>
+                    <div className="flex gap-2 mt-2">
+                      <Input
+                        id="secondary-color"
+                        type="color"
+                        value={brandingForm.secondary_color}
+                        onChange={(e) => setBrandingForm({ ...brandingForm, secondary_color: e.target.value })}
+                        className="w-16 h-12 rounded-xl cursor-pointer"
+                      />
+                      <Input
+                        type="text"
+                        value={brandingForm.secondary_color}
+                        onChange={(e) => setBrandingForm({ ...brandingForm, secondary_color: e.target.value })}
+                        className="rounded-xl"
+                        placeholder="#22C55E"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="accent-color">Color Acento</Label>
+                    <div className="flex gap-2 mt-2">
+                      <Input
+                        id="accent-color"
+                        type="color"
+                        value={brandingForm.accent_color}
+                        onChange={(e) => setBrandingForm({ ...brandingForm, accent_color: e.target.value })}
+                        className="w-16 h-12 rounded-xl cursor-pointer"
+                      />
+                      <Input
+                        type="text"
+                        value={brandingForm.accent_color}
+                        onChange={(e) => setBrandingForm({ ...brandingForm, accent_color: e.target.value })}
+                        className="rounded-xl"
+                        placeholder="#F59E0B"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Logo & Favicon */}
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="logo-url">URL del Logo</Label>
+                    <Input
+                      id="logo-url"
+                      type="url"
+                      value={brandingForm.logo_url}
+                      onChange={(e) => setBrandingForm({ ...brandingForm, logo_url: e.target.value })}
+                      placeholder="https://example.com/logo.png"
+                      className="mt-2 rounded-xl"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Aparecerá en tu página de reservas y documentos
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="favicon-url">URL del Favicon</Label>
+                    <Input
+                      id="favicon-url"
+                      type="url"
+                      value={brandingForm.favicon_url}
+                      onChange={(e) => setBrandingForm({ ...brandingForm, favicon_url: e.target.value })}
+                      placeholder="https://example.com/favicon.ico"
+                      className="mt-2 rounded-xl"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Icono en la pestaña del navegador
+                    </p>
+                  </div>
+                </div>
+
+                {/* Custom Domain */}
+                <div>
+                  <Label htmlFor="custom-domain">Dominio Personalizado (Opcional)</Label>
+                  <Input
+                    id="custom-domain"
+                    type="text"
+                    value={brandingForm.custom_domain}
+                    onChange={(e) => setBrandingForm({ ...brandingForm, custom_domain: e.target.value })}
+                    placeholder="mi-clinica.com"
+                    className="mt-2 rounded-xl"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Configura tu propio dominio para la página de reservas
+                  </p>
+                </div>
+
+                <Separator />
+
+                <Button 
+                  onClick={handleSaveBranding}
+                  className="rounded-xl shadow-lg shadow-primary/20"
+                  disabled={isSaving}
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {isSaving ? "Guardando..." : "Guardar Branding"}
+                </Button>
+              </div>
+            </Card>
+          </TabsContent>
+
+          {/* Ajustes Tab */}
+          <TabsContent value="ajustes" className="space-y-6">
+            <Card className="p-6 soft-shadow border-0">
+              <h2 className="font-heading font-bold text-xl mb-6">Preferencias de la Clínica</h2>
+
+              <div className="space-y-6">
+                {/* Booking Settings */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold">Sistema de Reservas</h3>
+                  
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30">
+                    <div className="flex-1">
+                      <p className="font-medium">Reservas Online Activas</p>
+                      <p className="text-sm text-muted-foreground">
+                        Permite que pacientes agenden citas desde tu página web
+                      </p>
+                    </div>
+                    <Switch
+                      checked={settingsForm.booking_enabled}
+                      onCheckedChange={(checked) => setSettingsForm({ ...settingsForm, booking_enabled: checked })}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30">
+                    <div className="flex-1">
+                      <p className="font-medium">Requiere Aprobación</p>
+                      <p className="text-sm text-muted-foreground">
+                        Las citas nuevas deben ser confirmadas manualmente
+                      </p>
+                    </div>
+                    <Switch
+                      checked={settingsForm.requires_approval}
+                      onCheckedChange={(checked) => setSettingsForm({ ...settingsForm, requires_approval: checked })}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30">
+                    <div className="flex-1">
+                      <p className="font-medium">Recordatorios Automáticos</p>
+                      <p className="text-sm text-muted-foreground">
+                        Envía recordatorios por email/WhatsApp 24h antes
+                      </p>
+                    </div>
+                    <Switch
+                      checked={settingsForm.auto_reminders}
+                      onCheckedChange={(checked) => setSettingsForm({ ...settingsForm, auto_reminders: checked })}
+                    />
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Cancellation Settings */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold">Cancelaciones</h3>
+                  
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30">
+                    <div className="flex-1">
+                      <p className="font-medium">Permitir Cancelaciones</p>
+                      <p className="text-sm text-muted-foreground">
+                        Los pacientes pueden cancelar sus citas
+                      </p>
+                    </div>
+                    <Switch
+                      checked={settingsForm.allow_cancellations}
+                      onCheckedChange={(checked) => setSettingsForm({ ...settingsForm, allow_cancellations: checked })}
+                    />
+                  </div>
+
+                  {settingsForm.allow_cancellations && (
+                    <div>
+                      <Label htmlFor="cancellation-hours">Horas mínimas de anticipación</Label>
+                      <Input
+                        id="cancellation-hours"
+                        type="number"
+                        min="1"
+                        max="72"
+                        value={settingsForm.cancellation_hours}
+                        onChange={(e) => setSettingsForm({ ...settingsForm, cancellation_hours: parseInt(e.target.value) || 2 })}
+                        className="mt-2 rounded-xl w-32"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        El paciente debe cancelar al menos {settingsForm.cancellation_hours}h antes
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
+                <Button 
+                  onClick={handleSaveSettings}
+                  className="rounded-xl shadow-lg shadow-primary/20"
+                  disabled={isSaving}
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {isSaving ? "Guardando..." : "Guardar Configuración"}
+                </Button>
               </div>
             </Card>
           </TabsContent>
