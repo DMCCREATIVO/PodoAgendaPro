@@ -13,102 +13,57 @@ export default function SuperAdminAuth() {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [loginForm, setLoginForm] = useState({
-    email: "superadmin@example.com",
-    password: "PodosPro2024!Super",
-  });
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      console.log("=== LOGIN SUPERADMIN ===");
-      console.log("Email:", loginForm.email);
-
-      // Intentar login
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: loginForm.email,
-        password: loginForm.password,
+      // 1. Intentar login
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
       });
 
-      console.log("Respuesta login:", { data: !!data, error: error?.message });
-
-      if (error) {
-        // Si usuario no existe y es el email superadmin, crear
-        if (error.message.includes("Invalid login credentials") && 
-            loginForm.email === "superadmin@example.com") {
-          
-          console.log("Creando usuario SuperAdmin...");
-          
-          const { data: signupData, error: signupError } = await supabase.auth.signUp({
-            email: loginForm.email,
-            password: loginForm.password,
-            options: {
-              data: {
-                is_superadmin: true,
-                full_name: "Super Administrator",
-              },
-            },
-          });
-
-          if (signupError) throw signupError;
-
-          console.log("SuperAdmin creado:", !!signupData.user);
-
-          if (signupData.session) {
-            toast({
-              title: "✅ SuperAdmin creado",
-              description: "Redirigiendo...",
-            });
-            
-            setTimeout(() => {
-              router.push("/superadmin");
-            }, 500);
-            return;
-          } else {
-            toast({
-              title: "✅ SuperAdmin creado",
-              description: "Ahora inicia sesión",
-            });
-            setLoading(false);
-            return;
-          }
-        }
-        
-        throw error;
+      if (authError) {
+        throw new Error(authError.message);
       }
 
-      // Verificar is_superadmin
-      const isSuperadmin = 
-        data.user?.user_metadata?.is_superadmin === true || 
-        data.user?.user_metadata?.is_superadmin === "true";
+      if (!authData.session || !authData.user) {
+        throw new Error("No se pudo establecer la sesión");
+      }
 
-      console.log("is_superadmin:", data.user?.user_metadata?.is_superadmin);
-      console.log("Es SuperAdmin:", isSuperadmin);
+      // 2. Verificar que el usuario sea SuperAdmin en la tabla users
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("is_superadmin")
+        .eq("id", authData.user.id)
+        .single();
 
-      if (!isSuperadmin) {
+      if (userError || !userData) {
         await supabase.auth.signOut();
-        throw new Error("Acceso denegado. Solo SuperAdmins.");
+        throw new Error("Usuario no encontrado en el sistema");
       }
 
-      console.log("✅ Login exitoso");
-      console.log("=====================");
+      if (!userData.is_superadmin) {
+        await supabase.auth.signOut();
+        throw new Error("Acceso denegado. Solo SuperAdmins pueden acceder");
+      }
 
+      // 3. Login exitoso
       toast({
         title: "✅ Acceso concedido",
         description: "Bienvenido, SuperAdmin",
       });
 
-      setTimeout(() => {
-        router.push("/superadmin");
-      }, 300);
+      router.push("/superadmin");
 
     } catch (error: any) {
-      console.error("Error login:", error.message);
       toast({
-        title: "❌ Error",
-        description: error.message,
+        title: "❌ Error de acceso",
+        description: error.message || "Credenciales inválidas",
         variant: "destructive",
       });
     } finally {
@@ -146,11 +101,12 @@ export default function SuperAdminAuth() {
               <Input
                 id="email"
                 type="email"
-                placeholder="superadmin@example.com"
-                value={loginForm.email}
-                onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
+                placeholder="superadmin@demo.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="h-12 pl-10 rounded-xl border-purple-500/20 focus:border-purple-500"
                 required
+                disabled={loading}
               />
             </div>
           </div>
@@ -165,10 +121,11 @@ export default function SuperAdminAuth() {
                 id="password"
                 type="password"
                 placeholder="••••••••••••"
-                value={loginForm.password}
-                onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="h-12 pl-10 rounded-xl border-purple-500/20 focus:border-purple-500"
                 required
+                disabled={loading}
               />
             </div>
           </div>
