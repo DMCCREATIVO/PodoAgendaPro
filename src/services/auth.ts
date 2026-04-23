@@ -23,28 +23,43 @@ export const authService = {
    */
   async login(email: string, password: string): Promise<{ success: boolean; session?: Session; error?: string }> {
     try {
+      const emailLowerCase = email.toLowerCase().trim();
+      
+      // DEBUG: Ver exactamente qué email estamos buscando
+      console.log("🔍 LOGIN DEBUG:");
+      console.log("Email original:", email);
+      console.log("Email procesado:", emailLowerCase);
+      console.log("Password length:", password.length);
+      
       // 1. Buscar usuario por email
       const { data: user, error: userError } = await supabase
         .from("users")
         .select("id, email, full_name, is_superadmin")
-        .eq("email", email.toLowerCase().trim())
+        .eq("email", emailLowerCase)
         .single();
 
+      console.log("Query result:", { user, userError });
+
       if (userError || !user) {
+        console.error("❌ Usuario no encontrado:", userError);
         return { 
           success: false, 
-          error: "Usuario no encontrado. Verifica que el email esté escrito correctamente (ejemplo: superadmin@demo.com)" 
+          error: `Usuario no encontrado. Email buscado: ${emailLowerCase}` 
         };
       }
 
+      console.log("✅ Usuario encontrado:", user.email);
+
       // 2. Verificar contraseña (por ahora, demo password)
-      // TODO: En producción, implementar bcrypt real
       if (password !== "Admin123!") {
+        console.error("❌ Contraseña incorrecta");
         return { 
           success: false, 
-          error: "Contraseña incorrecta. La contraseña demo es: Admin123!" 
+          error: "Contraseña incorrecta. Debe ser: Admin123!" 
         };
       }
+
+      console.log("✅ Contraseña correcta");
 
       // 3. Determinar rol
       let role: Session["role"] = "patient";
@@ -52,6 +67,7 @@ export const authService = {
 
       if (user.is_superadmin) {
         role = "superadmin";
+        console.log("✅ Usuario es SuperAdmin");
       } else {
         // Buscar rol en company_users
         const { data: companyUser } = await supabase
@@ -60,11 +76,15 @@ export const authService = {
           .eq("user_id", user.id)
           .single();
 
+        console.log("Company user data:", companyUser);
+
         if (companyUser) {
           role = companyUser.role as Session["role"];
           companyId = companyUser.company_id;
+          console.log("✅ Rol encontrado:", role);
+        } else {
+          console.log("ℹ️ Usuario es paciente (sin company_users)");
         }
-        // Si no está en company_users, es un paciente
       }
 
       // 4. Crear sesión
@@ -77,12 +97,15 @@ export const authService = {
         isSuperadmin: user.is_superadmin || false,
       };
 
+      console.log("✅ Sesión creada:", session);
+
       // 5. Guardar en localStorage
       localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+      console.log("✅ Sesión guardada en localStorage");
 
       return { success: true, session };
     } catch (error: any) {
-      console.error("Error en login:", error);
+      console.error("💥 Error inesperado en login:", error);
       return { success: false, error: error.message || "Error inesperado" };
     }
   },
@@ -92,6 +115,7 @@ export const authService = {
    */
   logout(): void {
     localStorage.removeItem(SESSION_KEY);
+    console.log("✅ Sesión eliminada");
   },
 
   /**
