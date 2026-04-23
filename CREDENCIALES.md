@@ -51,6 +51,12 @@ El sistema tiene **3 puntos de entrada separados**:
 - ✅ Acceder a estadísticas globales
 - ✅ Configuración del sistema completo
 
+### **IMPORTANTE:**
+- El usuario SuperAdmin está creado en la base de datos
+- Email verificado: `superadmin@podoagenda.com`
+- Si es tu primera vez, el sistema creará el usuario automáticamente
+- El flag `is_superadmin: true` está configurado correctamente
+
 ---
 
 ## 🏢 EMPRESA DEMO (Centro PodoSalud)
