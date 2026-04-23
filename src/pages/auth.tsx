@@ -37,15 +37,16 @@ export default function AuthPage() {
         description: `Bienvenido, ${result.user.full_name || 'Usuario'}`,
       });
 
-      // Redirigir según el rol seleccionado en el tab (o podríamos buscar su rol en company_users)
-      // Para mantenerlo súper simple y funcional ahora:
-      if (email === 'admin@demo.com' || activeTab === 'admin') {
-        router.push("/admin");
-      } else if (email === 'podologo@demo.com' || activeTab === 'podiatrist') {
-        router.push("/podologo");
-      } else {
-        router.push("/cliente");
-      }
+      // Redirección dura para asegurar que el estado se limpie
+      setTimeout(() => {
+        if (email === 'admin@demo.com' || activeTab === 'admin') {
+          window.location.href = "/admin";
+        } else if (email === 'podologo@demo.com' || activeTab === 'podiatrist') {
+          window.location.href = "/podologo";
+        } else {
+          window.location.href = "/cliente";
+        }
+      }, 500);
     } catch (err: any) {
       setError(err.message || "Error inesperado");
       setLoading(false);

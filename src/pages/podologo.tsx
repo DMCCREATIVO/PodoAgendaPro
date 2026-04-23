@@ -50,7 +50,7 @@ export default function Podologo() {
   }
 
   return (
-    <PodiatristLayout>
+    <PodiatristLayout activeTab="mi-dia">
       <SEO title="Panel Podólogo - PodoAgenda Pro" />
       
       <div className="space-y-6">

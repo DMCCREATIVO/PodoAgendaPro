@@ -42,7 +42,10 @@ export default function SuperAdminAuth() {
         description: "Bienvenido, SuperAdmin",
       });
 
-      router.push("/superadmin");
+      // Redirección dura
+      setTimeout(() => {
+        window.location.href = "/superadmin";
+      }, 500);
     } catch (err: any) {
       setError(err.message || "Error inesperado");
       setLoading(false);

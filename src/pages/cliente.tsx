@@ -50,7 +50,7 @@ export default function Cliente() {
   }
 
   return (
-    <PatientLayout>
+    <PatientLayout activeTab="mis-citas">
       <SEO title="Portal Paciente - PodoAgenda Pro" />
       
       <div className="space-y-6">
