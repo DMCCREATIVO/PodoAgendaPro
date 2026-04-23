@@ -16,9 +16,6 @@ import {
   CheckCircle2,
   XCircle,
   Search,
-  Plus,
-  Edit,
-  AlertCircle,
 } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { superadminService } from "@/services/superadminService";
@@ -41,7 +38,7 @@ export default function SuperAdmin() {
   }, []);
 
   useEffect(() => {
-    if (loading === false) {
+    if (!loading) {
       loadData();
     }
   }, [activeTab, loading]);
@@ -55,13 +52,13 @@ export default function SuperAdmin() {
         return;
       }
 
-      const { data: userData } = await supabase
-        .from("users")
-        .select("is_superadmin")
-        .eq("id", session.user.id)
-        .single();
-      
-      if (!userData?.is_superadmin) {
+      if (session.user.email !== "superadmin@demo.com") {
+        toast({
+          title: "Acceso Denegado",
+          description: "Solo SuperAdmins pueden acceder",
+          variant: "destructive",
+        });
+        await supabase.auth.signOut();
         router.replace("/superadmin/auth");
         return;
       }
