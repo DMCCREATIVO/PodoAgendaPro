@@ -292,12 +292,12 @@ export default function TenantAuth({ company, allowRegistration, allowPatientLog
                     placeholder="••••••••"
                     className="mt-2 rounded-xl"
                     disabled={isLoading}
-                    onKeyDown={(e) => e.key === "Enter" && handleLogin()}
+                    onKeyDown={(e) => e.key === "Enter" && handleLogin(e as unknown as React.FormEvent)}
                   />
                 </div>
 
                 <Button 
-                  onClick={handleLogin}
+                  onClick={handleLogin as any}
                   className="w-full rounded-xl shadow-lg shadow-primary/20"
                   size="lg"
                   disabled={isLoading}
