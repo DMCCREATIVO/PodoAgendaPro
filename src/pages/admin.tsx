@@ -21,6 +21,7 @@ import { serviceService } from "@/services/serviceService";
 import { appointmentService } from "@/services/appointmentService";
 import { companyService } from "@/services/companyService";
 import { useToast } from "@/hooks/use-toast";
+import Link from "next/link";
 
 // Mock data for demographics
 const DEMOGRAPHICS_DATA = {
@@ -1423,6 +1424,16 @@ export default function Admin() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="rounded-lg"
+                            asChild
+                          >
+                            <Link href={`/paciente/${client.id}`}>
+                              <Eye className="w-4 h-4" />
+                            </Link>
+                          </Button>
                           <Button variant="ghost" size="sm" className="rounded-lg" onClick={() => openEditClientModal(client)}>
                             <Edit className="w-4 h-4" />
                           </Button>
