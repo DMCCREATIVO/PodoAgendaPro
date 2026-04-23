@@ -1,123 +1,131 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  User, Building2, Stethoscope, ArrowRight, Mail, Lock, 
-  CheckCircle, Sparkles, Shield, Crown
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { authService } from "@/services/authService";
+import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { authService } from "@/services/authService";
+import { supabase } from "@/integrations/supabase/client";
 import Link from "next/link";
-
-type UserRole = "admin" | "podiatrist" | "patient";
+import { 
+  ArrowRight, Shield, Sparkles, Crown,
+  Eye, EyeOff, ArrowLeft
+} from "lucide-react";
 
 export default function Auth() {
   const router = useRouter();
   const { toast } = useToast();
-  
-  const [mode, setMode] = useState<"login" | "register">("login");
+  const mode = (router.query.mode as string) || "login";
+
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
-  
+  const [showPassword, setShowPassword] = useState(false);
+
   // Login form
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  
-  // Register form
-  const [registerData, setRegisterData] = useState({
-    name: "",
+  const [loginForm, setLoginForm] = useState({
     email: "",
     password: "",
-    confirmPassword: "",
-    companyName: "",
-    phone: "",
-    planId: "",
+    remember: false,
   });
 
-  const roles = [
-    {
-      id: "admin" as UserRole,
-      title: "Administrador de Clínica",
-      icon: Building2,
-      description: "Gestiona toda tu clínica podológica",
-      color: "from-blue-500 to-cyan-500",
-      features: ["Gestión completa", "Múltiples podólogos", "Analytics avanzados"]
-    },
-    {
-      id: "podiatrist" as UserRole,
-      title: "Podólogo",
-      icon: Stethoscope,
-      description: "Atiende pacientes y gestiona tu agenda",
-      color: "from-green-500 to-emerald-500",
-      features: ["Ficha clínica", "Agenda personal", "Historial pacientes"]
-    },
-    {
-      id: "patient" as UserRole,
-      title: "Paciente",
-      icon: User,
-      description: "Agenda citas y consulta tu historial",
-      color: "from-purple-500 to-pink-500",
-      features: ["Agendar online", "Ver historial", "Gestionar citas"]
-    }
-  ];
+  // Register form
+  const [registerForm, setRegisterForm] = useState({
+    full_name: "",
+    email: "",
+    password: "",
+    confirm_password: "",
+    company_name: "",
+    phone: "",
+    plan_id: "professional",
+    accept_terms: false,
+  });
 
-  const plans = [
-    {
-      id: "starter",
-      name: "Starter",
-      price: "$29",
-      period: "/mes",
-      features: ["1 Podólogo", "100 pacientes", "Agenda básica"],
-      popular: false
-    },
-    {
-      id: "professional",
-      name: "Professional",
-      price: "$79",
-      period: "/mes",
-      features: ["5 Podólogos", "Pacientes ilimitados", "Ficha completa"],
-      popular: true
-    },
-    {
-      id: "enterprise",
-      name: "Enterprise",
-      price: "Custom",
-      period: "",
-      features: ["Ilimitado", "Multi-sucursal", "Soporte 24/7"],
-      popular: false
-    }
-  ];
+  useEffect(() => {
+    checkExistingSession();
+  }, []);
 
-  const handleLogin = async () => {
-    if (!loginEmail || !loginPassword) {
-      toast({
-        title: "Campos requeridos",
-        description: "Por favor completa email y contraseña",
-        variant: "destructive",
-      });
-      return;
-    }
+  const checkExistingSession = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (user) {
+      // Check if superadmin
+      if (user.user_metadata?.is_superadmin === true) {
+        router.push("/superadmin");
+        return;
+      }
 
+      // Check company membership and redirect accordingly
+      const { data: companyUsers } = await supabase
+        .from("company_users")
+        .select("role, company_id, companies(slug)")
+        .eq("user_id", user.id)
+        .limit(1)
+        .single();
+
+      if (companyUsers) {
+        const role = companyUsers.role;
+        
+        if (role === "owner" || role === "admin") {
+          router.push("/admin");
+        } else if (role === "podiatrist" || role === "staff") {
+          router.push("/podologo");
+        }
+      }
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsLoading(true);
+
     try {
-      const { user } = await authService.login(loginEmail, loginPassword);
-      
+      const { user } = await authService.login(loginForm.email, loginForm.password);
+
       toast({
-        title: "Bienvenido de vuelta",
-        description: "Redirigiendo a tu panel...",
+        title: "¡Bienvenido de vuelta!",
+        description: "Iniciando sesión...",
       });
 
-      // Redirect based on role (will be handled by role detection)
-      setTimeout(() => {
-        router.push("/admin");
-      }, 1000);
+      // Check if superadmin
+      if (user.user_metadata?.is_superadmin === true) {
+        setTimeout(() => {
+          router.push("/superadmin");
+        }, 1000);
+        return;
+      }
+
+      // Check company membership
+      const { data: companyUsers } = await supabase
+        .from("company_users")
+        .select("role, company_id, companies(slug)")
+        .eq("user_id", user.id)
+        .limit(1)
+        .single();
+
+      if (companyUsers) {
+        const role = companyUsers.role;
+        
+        setTimeout(() => {
+          if (role === "owner" || role === "admin") {
+            router.push("/admin");
+          } else if (role === "podiatrist" || role === "staff") {
+            router.push("/podologo");
+          } else {
+            router.push("/");
+          }
+        }, 1000);
+      } else {
+        // No company found
+        toast({
+          title: "Sin empresa asignada",
+          description: "Contacta al administrador del sistema",
+          variant: "destructive",
+        });
+        await authService.logout();
+      }
     } catch (error: any) {
       toast({
         title: "Error al iniciar sesión",
@@ -129,62 +137,37 @@ export default function Auth() {
     }
   };
 
-  const handleRegister = async () => {
-    // Validation
-    if (!registerData.name || !registerData.email || !registerData.password) {
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (registerForm.password !== registerForm.confirm_password) {
       toast({
-        title: "Campos requeridos",
-        description: "Por favor completa todos los campos obligatorios",
+        title: "Error",
+        description: "Las contraseñas no coinciden",
         variant: "destructive",
       });
       return;
     }
 
-    if (registerData.password !== registerData.confirmPassword) {
+    if (!registerForm.accept_terms) {
       toast({
-        title: "Contraseñas no coinciden",
-        description: "Verifica que ambas contraseñas sean iguales",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (registerData.password.length < 6) {
-      toast({
-        title: "Contraseña muy corta",
-        description: "La contraseña debe tener al menos 6 caracteres",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!registerData.companyName) {
-      toast({
-        title: "Nombre de clínica requerido",
-        description: "Por favor ingresa el nombre de tu clínica",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!registerData.planId) {
-      toast({
-        title: "Plan requerido",
-        description: "Por favor selecciona un plan para continuar",
+        title: "Error",
+        description: "Debes aceptar los términos y condiciones",
         variant: "destructive",
       });
       return;
     }
 
     setIsLoading(true);
+
     try {
       await authService.register({
-        email: registerData.email,
-        password: registerData.password,
-        full_name: registerData.name,
-        company_name: registerData.companyName,
-        phone: registerData.phone,
-        plan_id: registerData.planId,
+        email: registerForm.email,
+        password: registerForm.password,
+        full_name: registerForm.full_name,
+        company_name: registerForm.company_name,
+        phone: registerForm.phone,
+        plan_id: registerForm.plan_id,
       });
 
       toast({
@@ -192,13 +175,12 @@ export default function Auth() {
         description: "Tu cuenta ha sido creada. Redirigiendo...",
       });
 
-      // Redirect to onboarding
       setTimeout(() => {
         router.push("/onboarding");
       }, 1500);
     } catch (error: any) {
       toast({
-        title: "Error en el registro",
+        title: "Error al registrarse",
         description: error.message,
         variant: "destructive",
       });
@@ -207,320 +189,391 @@ export default function Auth() {
     }
   };
 
+  const PLANS = [
+    {
+      id: "starter",
+      name: "Starter",
+      price: "$29.990",
+      period: "/mes",
+      features: ["1 Podólogo", "100 Pacientes", "Agenda básica", "Soporte email"],
+    },
+    {
+      id: "professional",
+      name: "Professional",
+      price: "$79.990",
+      period: "/mes",
+      popular: true,
+      features: ["5 Podólogos", "Pacientes ilimitados", "Ficha completa", "Soporte prioritario", "Reportes avanzados"],
+    },
+    {
+      id: "enterprise",
+      name: "Enterprise",
+      price: "Contactar",
+      period: "",
+      features: ["Podólogos ilimitados", "Multi-sucursal", "API personalizada", "Soporte 24/7", "Implementación dedicada"],
+    },
+  ];
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-muted/30 to-background">
-      {/* Background Decoration */}
-      <div className="absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/5 rounded-full blur-3xl" />
-      </div>
-
+    <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background flex items-center justify-center p-4">
       <div className="w-full max-w-6xl">
-        <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 mb-6 group">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center group-hover:scale-110 transition-transform">
-              <Stethoscope className="w-6 h-6 text-white" />
-            </div>
-            <span className="font-heading font-bold text-2xl">PODOS PRO</span>
-          </Link>
-          <h1 className="font-heading font-bold text-4xl mb-2">
-            {mode === "login" ? "Bienvenido de vuelta" : "Crea tu cuenta"}
-          </h1>
-          <p className="text-muted-foreground">
-            {mode === "login" 
-              ? "Ingresa a tu panel de control" 
-              : "Comienza a gestionar tu clínica hoy"}
-          </p>
-        </div>
-
-        <Tabs value={mode} onValueChange={(v) => setMode(v as "login" | "register")} className="w-full">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
-            <TabsTrigger value="login">Iniciar Sesión</TabsTrigger>
-            <TabsTrigger value="register">Registrarse</TabsTrigger>
-          </TabsList>
-
-          {/* Login Tab */}
-          <TabsContent value="login">
-            <Card className="max-w-md mx-auto p-8 soft-shadow-lg border-0">
-              {/* Role Selection for Login */}
-              {!selectedRole ? (
-                <div className="space-y-6">
-                  <div className="text-center mb-6">
-                    <h2 className="font-heading font-bold text-xl mb-2">Selecciona tu perfil</h2>
-                    <p className="text-sm text-muted-foreground">¿Cómo vas a usar PODOS PRO?</p>
+        {mode === "login" ? (
+          /* LOGIN MODE - SuperAdmin and Company Owners */
+          <div className="grid lg:grid-cols-2 gap-8 items-center">
+            {/* Left - Login Form */}
+            <Card className="p-8 soft-shadow border-0">
+              <div className="mb-8">
+                <Link href="/" className="flex items-center gap-3 group mb-8">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <span className="text-white font-bold text-xl">P</span>
                   </div>
+                  <div>
+                    <p className="font-heading font-bold text-xl">PODOS PRO</p>
+                    <p className="text-xs text-muted-foreground">Sistema Podológico</p>
+                  </div>
+                </Link>
 
-                  <div className="space-y-3">
-                    {roles.map((role) => (
-                      <button
-                        key={role.id}
-                        onClick={() => setSelectedRole(role.id)}
-                        className="w-full text-left p-4 rounded-2xl border-2 border-border hover:border-primary transition-all hover:shadow-lg group"
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className={cn(
-                            "w-12 h-12 rounded-xl bg-gradient-to-br flex items-center justify-center group-hover:scale-110 transition-transform",
-                            role.color
-                          )}>
-                            <role.icon className="w-6 h-6 text-white" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold mb-1">{role.title}</p>
-                            <p className="text-sm text-muted-foreground">{role.description}</p>
-                          </div>
-                          <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
-                        </div>
-                      </button>
-                    ))}
+                <h1 className="font-heading font-bold text-3xl mb-2">Iniciar Sesión</h1>
+                <p className="text-muted-foreground">
+                  Acceso para SuperAdmin y Administradores de Empresa
+                </p>
+              </div>
+
+              <form onSubmit={handleLogin} className="space-y-6">
+                <div>
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={loginForm.email}
+                    onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
+                    placeholder="tu@email.com"
+                    className="mt-2 rounded-xl"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="password">Contraseña</Label>
+                  <div className="relative mt-2">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={loginForm.password}
+                      onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                      placeholder="••••••••"
+                      className="rounded-xl pr-12"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
                   </div>
                 </div>
-              ) : (
-                <div className="space-y-6">
-                  {/* Selected Role Badge */}
-                  <div className="flex items-center justify-between mb-4">
-                    <Badge variant="outline" className="rounded-full">
-                      {roles.find(r => r.id === selectedRole)?.title}
-                    </Badge>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => setSelectedRole(null)}
-                      className="text-xs"
-                    >
-                      Cambiar perfil
-                    </Button>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="remember"
+                      checked={loginForm.remember}
+                      onCheckedChange={(checked) => setLoginForm({ ...loginForm, remember: !!checked })}
+                    />
+                    <Label htmlFor="remember" className="text-sm cursor-pointer">
+                      Recordarme
+                    </Label>
                   </div>
 
-                  {/* Login Form */}
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="tu@email.com"
-                        value={loginEmail}
-                        onChange={(e) => setLoginEmail(e.target.value)}
-                        className="mt-2 rounded-xl"
-                        onKeyPress={(e) => e.key === "Enter" && handleLogin()}
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="password">Contraseña</Label>
-                      <Input
-                        id="password"
-                        type="password"
-                        placeholder="••••••••"
-                        value={loginPassword}
-                        onChange={(e) => setLoginPassword(e.target.value)}
-                        className="mt-2 rounded-xl"
-                        onKeyPress={(e) => e.key === "Enter" && handleLogin()}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between text-sm">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" className="rounded" />
-                        <span className="text-muted-foreground">Recordarme</span>
-                      </label>
-                      <Link href="#" className="text-primary hover:underline">
-                        ¿Olvidaste tu contraseña?
-                      </Link>
-                    </div>
-
-                    <Button 
-                      onClick={handleLogin}
-                      disabled={isLoading}
-                      className="w-full rounded-xl shadow-lg shadow-primary/20"
-                      size="lg"
-                    >
-                      {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
-                      <ArrowRight className="w-5 h-5 ml-2" />
-                    </Button>
-                  </div>
+                  <Link href="/auth/forgot-password" className="text-sm text-primary hover:underline">
+                    ¿Olvidaste tu contraseña?
+                  </Link>
                 </div>
-              )}
+
+                <Button
+                  type="submit"
+                  className="w-full rounded-xl shadow-lg shadow-primary/20 h-12"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+
+                <Separator />
+
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    ¿No tienes una empresa registrada?
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.push("/auth?mode=register")}
+                    className="rounded-xl"
+                  >
+                    Crear Nueva Empresa
+                  </Button>
+                </div>
+              </form>
             </Card>
-          </TabsContent>
 
-          {/* Register Tab */}
-          <TabsContent value="register">
-            <Card className="max-w-2xl mx-auto p-8 soft-shadow-lg border-0">
-              <div className="space-y-6">
-                <div className="text-center mb-6">
-                  <Badge variant="outline" className="rounded-full mb-4">
-                    <Sparkles className="w-3 h-3 mr-2 inline" />
-                    14 días de prueba gratis
+            {/* Right - Features */}
+            <div className="space-y-6">
+              <div className="mb-8">
+                <Badge className="mb-4 rounded-full px-4 py-1">Acceso Seguro</Badge>
+                <h2 className="font-heading font-bold text-4xl mb-4">
+                  Bienvenido a PODOS PRO
+                </h2>
+                <p className="text-lg text-muted-foreground">
+                  El sistema de gestión más completo para clínicas podológicas
+                </p>
+              </div>
+
+              <div className="grid gap-4">
+                <Card className="p-6 soft-shadow border-0 hover:shadow-xl transition-shadow">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <Shield className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold mb-2">Seguro y Confiable</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Datos encriptados y cumplimiento total con normativas de salud
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+
+                <Card className="p-6 soft-shadow border-0 hover:shadow-xl transition-shadow">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
+                      <Sparkles className="w-6 h-6 text-accent" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold mb-2">Fácil de Usar</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Interfaz intuitiva diseñada para profesionales de la salud
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+
+                <Card className="p-6 soft-shadow border-0 hover:shadow-xl transition-shadow">
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center flex-shrink-0">
+                      <Crown className="w-6 h-6 text-secondary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold mb-2">Soporte Premium</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Equipo dedicado para ayudarte en cada paso
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+
+              <div className="mt-8 p-6 rounded-2xl bg-gradient-to-br from-primary/5 to-accent/5 border border-primary/10">
+                <p className="text-sm text-muted-foreground text-center">
+                  <strong>¿Eres Podólogo o Paciente?</strong>
+                  <br />
+                  Pide a tu clínica su URL personalizada de acceso
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* REGISTER MODE - New Companies */
+          <div className="max-w-4xl mx-auto">
+            <Card className="p-8 soft-shadow border-0">
+              <div className="mb-8">
+                <Button
+                  variant="ghost"
+                  onClick={() => router.push("/auth")}
+                  className="mb-6 rounded-xl"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Volver al Login
+                </Button>
+
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h1 className="font-heading font-bold text-3xl mb-2">Crear Nueva Empresa</h1>
+                    <p className="text-muted-foreground">
+                      Regístrate y comienza tu prueba gratuita de 14 días
+                    </p>
+                  </div>
+                  <Badge className="rounded-full px-4 py-1 bg-accent text-accent-foreground">
+                    14 días gratis
                   </Badge>
-                  <h2 className="font-heading font-bold text-2xl mb-2">Crea tu clínica en PODOS PRO</h2>
-                  <p className="text-sm text-muted-foreground">Sin tarjeta de crédito requerida</p>
+                </div>
+              </div>
+
+              <form onSubmit={handleRegister} className="space-y-8">
+                {/* Personal Info */}
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg">Información Personal</h3>
+                  
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="full_name">Nombre Completo *</Label>
+                      <Input
+                        id="full_name"
+                        value={registerForm.full_name}
+                        onChange={(e) => setRegisterForm({ ...registerForm, full_name: e.target.value })}
+                        placeholder="Juan Pérez"
+                        className="mt-2 rounded-xl"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="phone">Teléfono</Label>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        value={registerForm.phone}
+                        onChange={(e) => setRegisterForm({ ...registerForm, phone: e.target.value })}
+                        placeholder="+56 9 1234 5678"
+                        className="mt-2 rounded-xl"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="reg_email">Email *</Label>
+                      <Input
+                        id="reg_email"
+                        type="email"
+                        value={registerForm.email}
+                        onChange={(e) => setRegisterForm({ ...registerForm, email: e.target.value })}
+                        placeholder="tu@email.com"
+                        className="mt-2 rounded-xl"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="company_name">Nombre de la Clínica *</Label>
+                      <Input
+                        id="company_name"
+                        value={registerForm.company_name}
+                        onChange={(e) => setRegisterForm({ ...registerForm, company_name: e.target.value })}
+                        placeholder="Centro PodoSalud"
+                        className="mt-2 rounded-xl"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="reg_password">Contraseña *</Label>
+                      <Input
+                        id="reg_password"
+                        type="password"
+                        value={registerForm.password}
+                        onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
+                        placeholder="••••••••"
+                        className="mt-2 rounded-xl"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="confirm_password">Confirmar Contraseña *</Label>
+                      <Input
+                        id="confirm_password"
+                        type="password"
+                        value={registerForm.confirm_password}
+                        onChange={(e) => setRegisterForm({ ...registerForm, confirm_password: e.target.value })}
+                        placeholder="••••••••"
+                        className="mt-2 rounded-xl"
+                        required
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="name">Nombre Completo *</Label>
-                    <Input
-                      id="name"
-                      type="text"
-                      placeholder="Juan Pérez"
-                      value={registerData.name}
-                      onChange={(e) => setRegisterData({ ...registerData, name: e.target.value })}
-                      className="mt-2 rounded-xl"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="register-email">Email *</Label>
-                    <Input
-                      id="register-email"
-                      type="email"
-                      placeholder="juan@clinica.com"
-                      value={registerData.email}
-                      onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
-                      className="mt-2 rounded-xl"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="register-password">Contraseña *</Label>
-                    <Input
-                      id="register-password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={registerData.password}
-                      onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
-                      className="mt-2 rounded-xl"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="confirm-password">Confirmar Contraseña *</Label>
-                    <Input
-                      id="confirm-password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={registerData.confirmPassword}
-                      onChange={(e) => setRegisterData({ ...registerData, confirmPassword: e.target.value })}
-                      className="mt-2 rounded-xl"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="company-name">Nombre de tu Clínica *</Label>
-                    <Input
-                      id="company-name"
-                      type="text"
-                      placeholder="Clínica PodoSalud"
-                      value={registerData.companyName}
-                      onChange={(e) => setRegisterData({ ...registerData, companyName: e.target.value })}
-                      className="mt-2 rounded-xl"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="phone">Teléfono</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="+56 9 1234 5678"
-                      value={registerData.phone}
-                      onChange={(e) => setRegisterData({ ...registerData, phone: e.target.value })}
-                      className="mt-2 rounded-xl"
-                    />
-                  </div>
-                </div>
+                <Separator />
 
                 {/* Plan Selection */}
-                <div>
-                  <Label>Selecciona tu Plan *</Label>
-                  <div className="grid md:grid-cols-3 gap-4 mt-2">
-                    {plans.map((plan) => (
-                      <button
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg">Selecciona tu Plan</h3>
+                  
+                  <div className="grid md:grid-cols-3 gap-4">
+                    {PLANS.map((plan) => (
+                      <Card
                         key={plan.id}
-                        onClick={() => setRegisterData({ ...registerData, planId: plan.id })}
-                        className={cn(
-                          "relative p-4 rounded-2xl border-2 transition-all text-left",
-                          registerData.planId === plan.id
-                            ? "border-primary bg-primary/5 shadow-lg"
-                            : "border-border hover:border-primary/50"
-                        )}
+                        className={`p-6 cursor-pointer transition-all hover:shadow-xl ${
+                          registerForm.plan_id === plan.id
+                            ? "border-2 border-primary shadow-lg shadow-primary/20"
+                            : "border-2 border-transparent"
+                        } ${plan.popular ? "relative" : ""}`}
+                        onClick={() => setRegisterForm({ ...registerForm, plan_id: plan.id })}
                       >
                         {plan.popular && (
-                          <Badge className="absolute -top-2 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary to-accent border-0 text-xs">
+                          <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-4 bg-accent text-accent-foreground">
                             Popular
                           </Badge>
                         )}
-                        <h3 className="font-bold mb-1">{plan.name}</h3>
-                        <div className="flex items-baseline gap-1 mb-3">
-                          <span className="text-2xl font-bold">{plan.price}</span>
-                          <span className="text-sm text-muted-foreground">{plan.period}</span>
+
+                        <div className="text-center">
+                          <h4 className="font-bold text-lg mb-2">{plan.name}</h4>
+                          <div className="mb-4">
+                            <span className="text-3xl font-bold">{plan.price}</span>
+                            <span className="text-muted-foreground">{plan.period}</span>
+                          </div>
+                          <ul className="space-y-2 text-sm text-left">
+                            {plan.features.map((feature, idx) => (
+                              <li key={idx} className="flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                                <span>{feature}</span>
+                              </li>
+                            ))}
+                          </ul>
                         </div>
-                        <ul className="space-y-1">
-                          {plan.features.map((feature, i) => (
-                            <li key={i} className="flex items-center gap-2 text-xs">
-                              <CheckCircle className="w-3 h-3 text-accent flex-shrink-0" />
-                              <span>{feature}</span>
-                            </li>
-                          ))}
-                        </ul>
-                        {registerData.planId === plan.id && (
-                          <CheckCircle className="absolute top-2 right-2 w-5 h-5 text-primary" />
-                        )}
-                      </button>
+                      </Card>
                     ))}
                   </div>
                 </div>
 
-                <div className="flex items-start gap-2 text-sm text-muted-foreground">
-                  <input type="checkbox" className="mt-1 rounded" required />
-                  <p>
-                    Acepto los <Link href="#" className="text-primary hover:underline">Términos y Condiciones</Link> y la <Link href="#" className="text-primary hover:underline">Política de Privacidad</Link>
-                  </p>
+                <Separator />
+
+                {/* Terms */}
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="terms"
+                    checked={registerForm.accept_terms}
+                    onCheckedChange={(checked) => setRegisterForm({ ...registerForm, accept_terms: !!checked })}
+                  />
+                  <Label htmlFor="terms" className="text-sm cursor-pointer leading-relaxed">
+                    Acepto los{" "}
+                    <Link href="/terminos" className="text-primary hover:underline">
+                      términos y condiciones
+                    </Link>{" "}
+                    y la{" "}
+                    <Link href="/privacidad" className="text-primary hover:underline">
+                      política de privacidad
+                    </Link>
+                  </Label>
                 </div>
 
-                <Button 
-                  onClick={handleRegister}
+                <Button
+                  type="submit"
+                  className="w-full rounded-xl shadow-lg shadow-primary/20 h-12"
                   disabled={isLoading}
-                  className="w-full rounded-xl shadow-lg shadow-primary/20"
-                  size="lg"
                 >
                   {isLoading ? "Creando cuenta..." : "Crear Cuenta Gratis"}
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
-
-                <p className="text-center text-sm text-muted-foreground">
-                  ¿Ya tienes cuenta? <button onClick={() => setMode("login")} className="text-primary hover:underline font-semibold">Inicia sesión</button>
-                </p>
-              </div>
+              </form>
             </Card>
-          </TabsContent>
-        </Tabs>
-
-        {/* Features Banner */}
-        <div className="max-w-4xl mx-auto mt-12 grid md:grid-cols-3 gap-6">
-          <div className="flex items-start gap-3 p-4 rounded-2xl bg-background/50 backdrop-blur-sm border border-border">
-            <Shield className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
-            <div>
-              <h3 className="font-semibold mb-1">Seguro y Confiable</h3>
-              <p className="text-sm text-muted-foreground">Datos encriptados y respaldos diarios</p>
-            </div>
           </div>
-          <div className="flex items-start gap-3 p-4 rounded-2xl bg-background/50 backdrop-blur-sm border border-border">
-            <Sparkles className="w-6 h-6 text-accent flex-shrink-0 mt-1" />
-            <div>
-              <h3 className="font-semibold mb-1">Fácil de Usar</h3>
-              <p className="text-sm text-muted-foreground">Interfaz intuitiva y moderna</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3 p-4 rounded-2xl bg-background/50 backdrop-blur-sm border border-border">
-            <Crown className="w-6 h-6 text-yellow-500 flex-shrink-0 mt-1" />
-            <div>
-              <h3 className="font-semibold mb-1">Soporte Premium</h3>
-              <p className="text-sm text-muted-foreground">Ayuda cuando la necesites</p>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
