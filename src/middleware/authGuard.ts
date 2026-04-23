@@ -9,21 +9,21 @@ export function useAuthGuard(requiredRole?: string) {
 
   useEffect(() => {
     checkAuth();
-  }, [router.pathname]);
+  }, []);
 
   const checkAuth = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session) {
-        // Not authenticated
-        const publicRoutes = ["/", "/auth", "/superadmin/auth", "/terminos", "/privacidad"];
-        const isDynamicPublic = router.pathname.match(/^\/\[slug\]/);
-
-        if (!publicRoutes.includes(router.pathname) && !isDynamicPublic) {
+        // Not authenticated - redirect to appropriate login
+        if (requiredRole === "superadmin") {
+          router.push("/superadmin/auth");
+        } else {
           router.push("/auth");
         }
         setLoading(false);
+        setAuthorized(false);
         return;
       }
 
@@ -31,24 +31,28 @@ export function useAuthGuard(requiredRole?: string) {
       const isSuperadmin = session.user.user_metadata?.is_superadmin === true;
 
       if (requiredRole === "superadmin") {
+        // Checking superadmin panel access
         if (!isSuperadmin) {
-          router.push("/auth");
+          router.push("/superadmin/auth");
           setLoading(false);
+          setAuthorized(false);
           return;
         }
+        // Is superadmin and accessing superadmin panel - AUTHORIZED
         setAuthorized(true);
         setLoading(false);
         return;
       }
 
-      // If superadmin tries to access non-superadmin routes
+      // If superadmin tries to access non-superadmin routes, redirect to superadmin panel
       if (isSuperadmin && requiredRole !== "superadmin") {
         router.push("/superadmin");
         setLoading(false);
+        setAuthorized(false);
         return;
       }
 
-      // Check company role
+      // Regular user - check company membership
       const { data: companyUser } = await supabase
         .from("company_users")
         .select("role")
@@ -59,29 +63,32 @@ export function useAuthGuard(requiredRole?: string) {
       if (!companyUser) {
         router.push("/auth");
         setLoading(false);
+        setAuthorized(false);
         return;
       }
 
-      // Validate role
+      // Check role matches
       if (requiredRole) {
-        const roleHierarchy: Record<string, string[]> = {
-          owner: ["owner", "admin"],
+        const allowedRoles: Record<string, string[]> = {
           admin: ["owner", "admin"],
           podiatrist: ["podiatrist", "staff"],
           patient: ["patient"],
         };
 
-        const allowedRoles = roleHierarchy[requiredRole] || [requiredRole];
-        if (!allowedRoles.includes(companyUser.role)) {
-          // Redirect to appropriate panel
-          if (companyUser.role === "owner" || companyUser.role === "admin") {
+        const userRole = companyUser.role;
+        const allowed = allowedRoles[requiredRole]?.includes(userRole);
+
+        if (!allowed) {
+          // Redirect to correct panel
+          if (userRole === "owner" || userRole === "admin") {
             router.push("/admin");
-          } else if (companyUser.role === "podiatrist" || companyUser.role === "staff") {
+          } else if (userRole === "podiatrist" || userRole === "staff") {
             router.push("/podologo");
-          } else if (companyUser.role === "patient") {
+          } else if (userRole === "patient") {
             router.push("/cliente");
           }
           setLoading(false);
+          setAuthorized(false);
           return;
         }
       }
@@ -89,9 +96,10 @@ export function useAuthGuard(requiredRole?: string) {
       setAuthorized(true);
       setLoading(false);
     } catch (error) {
-      console.error("Auth check error:", error);
+      console.error("Auth guard error:", error);
       router.push("/auth");
       setLoading(false);
+      setAuthorized(false);
     }
   };
 

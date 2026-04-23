@@ -9,10 +9,10 @@ interface SEOProps {
 
 // SEO elements that can be used in _document.tsx (returns JSX without Head wrapper)
 export function SEOElements({
-  title = "Hello World",
-  description = "Welcome to my app",
+  title = "PodoAgenda Pro - Sistema de Gestión Podológica",
+  description = "Sistema profesional SaaS para clínicas podológicas. Agenda, fichas clínicas, portal de pacientes y más.",
   image = "/og-image.png",
-  url,
+  url = "https://podoagenda.com",
 }: SEOProps) {
   return (
     <>
