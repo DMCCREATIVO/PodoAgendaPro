@@ -1,8 +1,10 @@
 import { ReactNode, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Home, Stethoscope, Users, LogOut, Menu, X } from "lucide-react";
+import { Home, Stethoscope, Users, LogOut, Menu, X, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { CompanySwitcher } from "@/components/CompanySwitcher";
 
 interface PodiatristLayoutProps {
   children: ReactNode;

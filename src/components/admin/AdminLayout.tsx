@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { LayoutDashboard, Calendar, Users, Stethoscope, DollarSign, Settings, LogOut, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { CompanySwitcher } from "@/components/CompanySwitcher";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -41,6 +43,24 @@ export function AdminLayout({ children, activeTab }: AdminLayoutProps) {
         <div className="p-6 border-b border-white/10">
           <h1 className="font-heading font-bold text-2xl text-white">PODOS PRO</h1>
           <p className="text-white/60 text-sm mt-1">Panel Administrativo</p>
+        </div>
+
+        <div className="hidden lg:flex w-72 flex-col fixed inset-y-0 z-50 bg-background/80 backdrop-blur-xl border-r border-border/50">
+          <div className="p-6">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                <Calendar className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <span className="font-heading font-bold text-xl tracking-tight">PODOS</span>
+                <span className="font-heading font-light text-xl tracking-tight text-primary">PRO</span>
+              </div>
+            </div>
+            
+            <div className="mb-6">
+              <CompanySwitcher />
+            </div>
+          </div>
         </div>
 
         <nav className="flex-1 p-4 space-y-2">
