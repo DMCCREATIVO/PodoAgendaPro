@@ -17,9 +17,18 @@ export const authService = {
     full_name: string;
     company_name: string;
     phone?: string;
-    plan_id: string;
+    plan_id: string; // This is actually the slug
   }) {
-    const { email, password, full_name, company_name, phone, plan_id } = params;
+    const { email, password, full_name, company_name, phone, plan_id: planSlug } = params;
+
+    // Get the actual plan UUID
+    const { data: plan, error: planError } = await supabase
+      .from("plans")
+      .select("id")
+      .eq("slug", planSlug)
+      .single();
+      
+    if (planError) throw new Error("Plan inválido seleccionado");
 
     // 1. Create auth user
     const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -36,15 +45,15 @@ export const authService = {
     if (authError) throw authError;
     if (!authData.user) throw new Error("No se pudo crear el usuario");
 
-    // 2. Create company with the authenticated user's ID
+    // 2. Create company
     const { data: company, error: companyError } = await supabase
       .from("companies")
       .insert({
         name: company_name,
         slug: company_name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""),
-        plan_id: plan_id,
+        plan_id: plan.id,
         status: "trial",
-        owner_id: authData.user.id,
+        plan_status: "trial",
         email: email,
         phone: phone || null,
       })
