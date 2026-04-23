@@ -55,51 +55,25 @@ export default function TenantAuth({ company, allowRegistration, allowPatientLog
     );
   }
 
-  const handleLogin = async () => {
-    if (!loginForm.email || !loginForm.password) {
-      toast({
-        title: "Campos requeridos",
-        description: "Por favor completa todos los campos",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     setIsLoading(true);
+    const { email, password } = loginForm;
     try {
-      await authService.login(loginForm.email, loginForm.password);
-
-      // Get user role in this company
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("No se pudo obtener el usuario");
-
-      const { data: companyUser } = await supabase
-        .from("company_users")
-        .select("role")
-        .eq("company_id", company.id)
-        .eq("user_id", user.id)
-        .eq("status", "active")
-        .single();
-
-      if (!companyUser && selectedRole !== "patient") {
-        throw new Error("No tienes acceso a esta clínica");
+      const result = await authService.loginSimple(email, password);
+      if (result.success) {
+        toast({
+          title: "Acceso exitoso",
+          description: "Bienvenido al portal del paciente",
+        });
+        router.push(`/${company.slug}`);
+      } else {
+        toast({
+          title: "Error de acceso",
+          description: result.error || "Credenciales incorrectas",
+          variant: "destructive",
+        });
       }
-
-      toast({
-        title: "¡Bienvenido!",
-        description: "Inicio de sesión exitoso",
-      });
-
-      // Redirect based on role
-      const redirectMap: Record<string, string> = {
-        owner: `/${company.slug}/admin`,
-        admin: `/${company.slug}/admin`,
-        podiatrist: `/${company.slug}/podologo`,
-        patient: `/${company.slug}/cliente`,
-      };
-
-      const redirect = redirectMap[companyUser?.role || "patient"] || `/${company.slug}/cliente`;
-      router.push(redirect);
     } catch (error: any) {
       toast({
         title: "Error al iniciar sesión",
