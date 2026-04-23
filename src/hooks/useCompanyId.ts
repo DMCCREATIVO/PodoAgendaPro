@@ -8,7 +8,9 @@ export function useCompanyId(): string {
   const { currentCompany } = useCompany();
   
   if (!currentCompany) {
-    throw new Error("No company selected. Ensure CompanyProvider wraps your component.");
+    // Instead of throwing, return an empty string to prevent crashes
+    // on initial load or public pages. Protected pages will handle auth redirection.
+    return "";
   }
   
   return currentCompany.id;

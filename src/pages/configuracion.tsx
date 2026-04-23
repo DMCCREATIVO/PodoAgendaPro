@@ -90,16 +90,19 @@ export default function Configuracion() {
       if (companyId) {
         const companyData = await companyService.getCompanyById(companyId);
         setCompany(companyData);
+        
+        const metadata = (companyData.metadata as any) || {};
+        
         setCompanyForm({
           name: companyData.name || "",
-          description: companyData.description || "",
+          description: metadata.description || "",
           email: companyData.email || "",
           phone: companyData.phone || "",
-          whatsapp: companyData.whatsapp || "",
+          whatsapp: metadata.whatsapp || "",
           address: companyData.address || "",
-          city: companyData.city || "",
+          city: metadata.city || "",
           website: companyData.website || "",
-          opening_hours: companyData.opening_hours || "",
+          opening_hours: metadata.opening_hours || "",
           logo_url: companyData.logo_url || "",
         });
       }
@@ -120,20 +123,20 @@ export default function Configuracion() {
       const { data: { user: authUser } } = await supabase.auth.getUser();
       if (!authUser) throw new Error("No autenticado");
 
-      // Update profile
-      const { error } = await supabase
-        .from('users')
-        .update({
+      // We'll use supabase.auth.updateUser for email and user_metadata for other info
+      // since the public.users table might not be directly updatable via client without specific RLS,
+      // or might not have avatar_url. It's safer to update user_metadata.
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: {
           full_name: profileForm.full_name,
           phone: profileForm.phone,
           avatar_url: profileForm.avatar_url,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', authUser.id);
+        }
+      });
+      
+      if (updateError) throw updateError;
 
-      if (error) throw error;
-
-      // Update email if changed (requires re-authentication)
+      // Update email if changed
       if (profileForm.email !== authUser.email) {
         const { error: emailError } = await supabase.auth.updateUser({
           email: profileForm.email,
@@ -169,7 +172,23 @@ export default function Configuracion() {
     
     setIsSaving(true);
     try {
-      await companyService.updateCompany(companyId, companyForm);
+      const metadata = (company?.metadata as any) || {};
+      
+      await companyService.updateCompany(companyId, {
+        name: companyForm.name,
+        email: companyForm.email,
+        phone: companyForm.phone,
+        address: companyForm.address,
+        website: companyForm.website,
+        logo_url: companyForm.logo_url,
+        metadata: {
+          ...metadata,
+          description: companyForm.description,
+          whatsapp: companyForm.whatsapp,
+          city: companyForm.city,
+          opening_hours: companyForm.opening_hours,
+        }
+      });
       
       toast({
         title: "Empresa actualizada",
