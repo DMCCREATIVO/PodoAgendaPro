@@ -14,8 +14,8 @@ export default function SuperAdminAuth() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [loginForm, setLoginForm] = useState({
-    email: "",
-    password: "",
+    email: "superadmin@example.com",
+    password: "PodosPro2024!Super",
   });
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -39,9 +39,8 @@ export default function SuperAdminAuth() {
       if (authError) {
         console.error("❌ ERROR DE LOGIN:", authError.message);
         
-        // Si el usuario no existe y es el email de superadmin, créalo
-        if (authError.message.includes("Invalid login credentials") && 
-            loginForm.email === "superadmin@example.com") {
+        // Si el usuario no existe, crear uno nuevo
+        if (authError.message.includes("Invalid login credentials")) {
           console.log("🆕 Usuario no existe. Creando SuperAdmin...");
           
           const { data: signupData, error: signupError } = await supabase.auth.signUp({
@@ -52,6 +51,7 @@ export default function SuperAdminAuth() {
                 is_superadmin: true,
                 full_name: "Super Administrator",
               },
+              emailRedirectTo: `${window.location.origin}/superadmin`,
             },
           });
 
@@ -72,14 +72,28 @@ export default function SuperAdminAuth() {
           console.log("📧 Email:", signupData.user.email);
           console.log("📝 Metadata:", signupData.user.user_metadata);
 
-          toast({
-            title: "✅ SuperAdmin creado",
-            description: "Ahora puedes iniciar sesión",
-          });
-
-          // Limpiar el formulario para que pueda intentar login nuevamente
-          setLoading(false);
-          return;
+          // Check if email confirmation is required
+          if (signupData.session) {
+            // Email confirmation NOT required - redirect directly
+            console.log("✅ Sesión creada automáticamente, redirigiendo...");
+            toast({
+              title: "✅ SuperAdmin creado e iniciado",
+              description: "Redirigiendo al panel...",
+            });
+            
+            setTimeout(() => {
+              window.location.href = "/superadmin";
+            }, 500);
+            return;
+          } else {
+            // Email confirmation required
+            toast({
+              title: "✅ SuperAdmin creado",
+              description: "Ahora puedes iniciar sesión con las credenciales",
+            });
+            setLoading(false);
+            return;
+          }
         }
         
         throw authError;
