@@ -1,367 +1,274 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/router";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Avatar } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
-import { Calendar, Clock, User, Mail, Phone, MapPin, CheckCircle, Star, Award } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
-import Link from "next/link";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Calendar, Clock, MapPin, Phone, Mail, CheckCircle2, Star } from "lucide-react";
+import { SEO } from "@/components/SEO";
 
-export default function Disponibilidad() {
+export default function PodiatristAvailability() {
   const router = useRouter();
   const { slug } = router.query;
-  const { toast } = useToast();
-
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  
+  const [selectedDate, setSelectedDate] = useState<string>("2026-04-25");
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
-  // Mock podologist data - will be replaced with real data
-  const podologist = {
-    id: 1,
-    name: "Dr. Carlos Ramírez",
-    specialty: "Podólogo Especialista",
-    avatar: "",
-    bio: "Podólogo certificado con más de 10 años de experiencia en tratamiento integral del pie. Especializado en pie diabético, biomecánica y podología deportiva.",
-    email: "carlos.ramirez@clinica.cl",
+  // Mock data - podólogo
+  const podiatrist = {
+    slug: "dra-ana-martinez",
+    name: "Dra. Ana Martínez",
+    specialty: "Podóloga Clínica",
+    bio: "Especialista en tratamientos podológicos integrales con más de 10 años de experiencia. Enfocada en el bienestar y salud de tus pies con tratamientos personalizados y tecnología de vanguardia.",
+    avatar: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=400&h=400&fit=crop",
+    email: "dra.martinez@centropodosalud.cl",
     phone: "+56 9 8765 4321",
-    location: "Providencia, Santiago",
+    location: "Centro PodoSalud - Av. Providencia 1234, Santiago",
     rating: 4.9,
     reviews: 127,
-    yearsExperience: 10,
-    certifications: ["Podología Clínica", "Pie Diabético", "Biomecánica"],
+    specialties: [
+      "Quiropodia",
+      "Tratamiento de Hongos",
+      "Uñas Encarnadas",
+      "Callosidades",
+      "Pie Diabético",
+      "Biomecánica",
+    ],
+    certifications: [
+      "Podóloga Clínica Universidad de Chile",
+      "Diplomado en Pie Diabético",
+      "Certificación Internacional en Onicocriptosis",
+    ],
   };
 
-  // Mock services - will be replaced with real data
-  const services = [
-    { id: 1, name: "Consulta Podológica", duration: 30, price: 25000, description: "Evaluación completa del pie" },
-    { id: 2, name: "Quiropodia", duration: 45, price: 18000, description: "Corte de uñas y tratamiento de callosidades" },
-    { id: 3, name: "Tratamiento Hongos", duration: 60, price: 35000, description: "Tratamiento especializado para onicomicosis" },
-  ];
+  // Mock data - horarios disponibles por fecha
+  const availability: Record<string, string[]> = {
+    "2026-04-25": ["09:00", "10:00", "11:30", "14:00", "15:30", "16:30"],
+    "2026-04-26": ["09:30", "11:00", "14:30", "16:00"],
+    "2026-04-28": ["09:00", "10:30", "12:00", "15:00", "17:00"],
+    "2026-04-29": ["10:00", "11:30", "14:00", "15:30", "16:30", "17:30"],
+    "2026-04-30": ["09:00", "10:00", "11:00", "14:30", "16:00"],
+  };
 
-  // Mock available times - will be replaced with real schedule
-  const availableTimes = [
-    "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
-    "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00"
+  // Fechas disponibles (próximos 7 días con disponibilidad)
+  const availableDates = [
+    { date: "2026-04-25", dayName: "Viernes", dayNum: "25", month: "Abril" },
+    { date: "2026-04-26", dayName: "Sábado", dayNum: "26", month: "Abril" },
+    { date: "2026-04-28", dayName: "Lunes", dayNum: "28", month: "Abril" },
+    { date: "2026-04-29", dayName: "Martes", dayNum: "29", month: "Abril" },
+    { date: "2026-04-30", dayName: "Miércoles", dayNum: "30", month: "Abril" },
   ];
 
   const handleBooking = () => {
-    if (!selectedTime) {
-      toast({
-        title: "Selecciona un horario",
-        description: "Por favor elige una hora disponible para continuar",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Redirect to booking flow with pre-selected data
-    router.push(`/agenda?podologist=${podologist.id}&date=${selectedDate?.toISOString().split('T')[0]}&time=${selectedTime}`);
+    if (!selectedTime) return;
+    
+    // Redirigir a agenda con datos pre-seleccionados
+    router.push({
+      pathname: "/agenda",
+      query: {
+        podiatrist: podiatrist.slug,
+        date: selectedDate,
+        time: selectedTime,
+      },
+    });
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-muted/20 to-background">
-      <Navigation />
+    <>
+      <SEO
+        title={`Reserva con ${podiatrist.name} - PodoAgenda Pro`}
+        description={`${podiatrist.bio} Agenda tu cita online de forma fácil y rápida.`}
+        image={podiatrist.avatar}
+      />
 
-      <div className="container mx-auto px-4 py-24">
-        <div className="max-w-6xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-12 animate-fade-in">
-            <Badge variant="secondary" className="rounded-full mb-4">
-              Agenda Online
-            </Badge>
-            <h1 className="font-heading font-bold text-4xl mb-4">
-              Reserva tu Hora con {podologist.name}
-            </h1>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Selecciona el día y hora que más te acomode para tu atención podológica
-            </p>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50/30">
+        <Navigation />
 
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Left Column - Podologist Info */}
-            <div className="lg:col-span-1 space-y-6">
-              {/* Profile Card */}
-              <Card className="p-6 soft-shadow border-0 animate-fade-in">
-                <div className="text-center mb-6">
-                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center mx-auto mb-4">
-                    <User className="w-12 h-12 text-white" />
-                  </div>
-                  <h2 className="font-heading font-bold text-xl mb-1">{podologist.name}</h2>
-                  <p className="text-muted-foreground">{podologist.specialty}</p>
+        {/* Hero Section */}
+        <section className="pt-24 pb-12 px-4">
+          <div className="max-w-6xl mx-auto">
+            <Card className="p-8 lg:p-12 bg-white/80 backdrop-blur-sm border-gray-200/50 shadow-xl">
+              <div className="grid lg:grid-cols-[auto_1fr] gap-8 items-start">
+                {/* Avatar */}
+                <div className="flex flex-col items-center gap-4">
+                  <Avatar className="w-32 h-32 lg:w-40 lg:h-40 ring-4 ring-blue-100 shadow-lg">
+                    <AvatarImage src={podiatrist.avatar} alt={podiatrist.name} />
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-3xl">
+                      {podiatrist.name.split(" ").map(n => n[0]).join("")}
+                    </AvatarFallback>
+                  </Avatar>
                   
-                  <div className="flex items-center justify-center gap-2 mt-3">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                      <span className="font-semibold">{podologist.rating}</span>
-                    </div>
-                    <span className="text-muted-foreground">({podologist.reviews} reseñas)</span>
+                  {/* Rating */}
+                  <div className="flex items-center gap-2 bg-yellow-50 px-4 py-2 rounded-full border border-yellow-200">
+                    <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                    <span className="font-semibold text-gray-900">{podiatrist.rating}</span>
+                    <span className="text-sm text-gray-600">({podiatrist.reviews} reseñas)</span>
                   </div>
                 </div>
 
-                <Separator className="my-4" />
+                {/* Info */}
+                <div className="space-y-6">
+                  <div>
+                    <h1 className="text-4xl lg:text-5xl font-heading font-bold text-gray-900 mb-2">
+                      {podiatrist.name}
+                    </h1>
+                    <p className="text-xl text-blue-600 font-medium">{podiatrist.specialty}</p>
+                  </div>
 
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-start gap-3">
-                    <Award className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="font-semibold">Experiencia</p>
-                      <p className="text-muted-foreground">{podologist.yearsExperience} años de práctica</p>
+                  <p className="text-lg text-gray-700 leading-relaxed">
+                    {podiatrist.bio}
+                  </p>
+
+                  {/* Contact Info */}
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="flex items-start gap-3 text-gray-700">
+                      <MapPin className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <span className="text-sm">{podiatrist.location}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-gray-700">
+                      <Phone className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                      <span className="text-sm">{podiatrist.phone}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-gray-700">
+                      <Mail className="w-5 h-5 text-blue-600 flex-shrink-0" />
+                      <span className="text-sm">{podiatrist.email}</span>
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-3">
-                    <Mail className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="font-semibold">Email</p>
-                      <p className="text-muted-foreground">{podologist.email}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <Phone className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="font-semibold">Teléfono</p>
-                      <p className="text-muted-foreground">{podologist.phone}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3">
-                    <MapPin className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="font-semibold">Ubicación</p>
-                      <p className="text-muted-foreground">{podologist.location}</p>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-
-              {/* About Card */}
-              <Card className="p-6 soft-shadow border-0 animate-fade-in">
-                <h3 className="font-semibold mb-3">Acerca de</h3>
-                <p className="text-sm text-muted-foreground mb-4">{podologist.bio}</p>
-                
-                <div>
-                  <p className="font-semibold text-sm mb-2">Certificaciones</p>
-                  <div className="flex flex-wrap gap-2">
-                    {podologist.certifications.map((cert, i) => (
-                      <Badge key={i} variant="outline" className="rounded-full text-xs">
-                        {cert}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              </Card>
-
-              {/* Services Card */}
-              <Card className="p-6 soft-shadow border-0 animate-fade-in">
-                <h3 className="font-semibold mb-4">Servicios Disponibles</h3>
-                <div className="space-y-3">
-                  {services.map((service) => (
-                    <div key={service.id} className="p-3 rounded-xl bg-muted/30">
-                      <div className="flex items-start justify-between mb-1">
-                        <p className="font-semibold text-sm">{service.name}</p>
-                        <Badge variant="outline" className="rounded-full text-xs">
-                          ${service.price.toLocaleString()}
+                  {/* Specialties */}
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-3">Especialidades:</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {podiatrist.specialties.map((specialty) => (
+                        <Badge
+                          key={specialty}
+                          className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                        >
+                          <CheckCircle2 className="w-3 h-3 mr-1" />
+                          {specialty}
                         </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground mb-1">{service.description}</p>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Clock className="w-3 h-3" />
-                        <span>{service.duration} min</span>
-                      </div>
+                      ))}
                     </div>
+                  </div>
+
+                  {/* Certifications */}
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-2">Certificaciones:</h3>
+                    <ul className="space-y-1">
+                      {podiatrist.certifications.map((cert) => (
+                        <li key={cert} className="text-sm text-gray-600 flex items-start gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+                          {cert}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </section>
+
+        {/* Booking Section */}
+        <section className="pb-16 px-4">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl lg:text-4xl font-heading font-bold text-gray-900 mb-3">
+                Agenda tu Cita
+              </h2>
+              <p className="text-lg text-gray-600">
+                Selecciona un día y hora que se ajuste a tu disponibilidad
+              </p>
+            </div>
+
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Selección de Fecha */}
+              <Card className="p-6 bg-white/80 backdrop-blur-sm border-gray-200/50">
+                <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-blue-600" />
+                  Selecciona una Fecha
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {availableDates.map((day) => (
+                    <button
+                      key={day.date}
+                      onClick={() => {
+                        setSelectedDate(day.date);
+                        setSelectedTime(null);
+                      }}
+                      className={`p-4 rounded-xl border-2 transition-all duration-200 text-center ${
+                        selectedDate === day.date
+                          ? "border-blue-600 bg-blue-50 shadow-lg shadow-blue-500/20"
+                          : "border-gray-200 hover:border-blue-300 hover:bg-gray-50"
+                      }`}
+                    >
+                      <div className="text-sm font-medium text-gray-600 mb-1">{day.dayName}</div>
+                      <div className="text-3xl font-bold text-gray-900">{day.dayNum}</div>
+                      <div className="text-xs text-gray-500 mt-1">{day.month}</div>
+                    </button>
                   ))}
                 </div>
               </Card>
+
+              {/* Selección de Hora */}
+              <Card className="p-6 bg-white/80 backdrop-blur-sm border-gray-200/50">
+                <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-blue-600" />
+                  Horarios Disponibles
+                </h3>
+                
+                {selectedDate && availability[selectedDate] ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {availability[selectedDate].map((time) => (
+                      <button
+                        key={time}
+                        onClick={() => setSelectedTime(time)}
+                        className={`py-3 px-4 rounded-xl border-2 font-medium transition-all duration-200 ${
+                          selectedTime === time
+                            ? "border-green-600 bg-green-50 text-green-700 shadow-lg shadow-green-500/20"
+                            : "border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50"
+                        }`}
+                      >
+                        {time}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-gray-500">
+                    Selecciona una fecha para ver horarios disponibles
+                  </div>
+                )}
+              </Card>
             </div>
 
-            {/* Right Column - Calendar & Time Selection */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* Calendar Card */}
-              <Card className="p-6 soft-shadow border-0 animate-fade-in">
-                <h2 className="font-heading font-bold text-2xl mb-6">Selecciona Fecha y Hora</h2>
-                
-                <div className="grid md:grid-cols-2 gap-6">
-                  {/* Calendar */}
-                  <div>
-                    <h3 className="font-semibold mb-4 flex items-center gap-2">
-                      <Calendar className="w-5 h-5 text-primary" />
-                      Elige un día
-                    </h3>
-                    <CalendarComponent
-                      mode="single"
-                      selected={selectedDate}
-                      onSelect={setSelectedDate}
-                      disabled={(date) => date < new Date() || date.getDay() === 0}
-                      className="rounded-xl border shadow-sm"
-                    />
-                    <p className="text-xs text-muted-foreground mt-3">
-                      * Domingos no disponibles
+            {/* CTA Button */}
+            {selectedTime && (
+              <div className="mt-8 text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <Card className="inline-block p-6 bg-gradient-to-br from-blue-600 to-indigo-600 border-0 shadow-xl shadow-blue-500/30">
+                  <div className="text-white mb-4">
+                    <p className="text-sm font-medium mb-1">Has seleccionado:</p>
+                    <p className="text-2xl font-bold">
+                      {availableDates.find(d => d.date === selectedDate)?.dayName} {availableDates.find(d => d.date === selectedDate)?.dayNum} de {availableDates.find(d => d.date === selectedDate)?.month} - {selectedTime}
                     </p>
                   </div>
-
-                  {/* Time Slots */}
-                  <div>
-                    <h3 className="font-semibold mb-4 flex items-center gap-2">
-                      <Clock className="w-5 h-5 text-primary" />
-                      Elige una hora
-                    </h3>
-                    
-                    {!selectedDate ? (
-                      <div className="text-center py-12">
-                        <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                        <p className="text-sm text-muted-foreground">
-                          Selecciona primero una fecha
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
-                        <div>
-                          <p className="text-xs font-semibold text-muted-foreground mb-2">MAÑANA</p>
-                          <div className="grid grid-cols-3 gap-2">
-                            {availableTimes.filter(t => parseInt(t.split(':')[0]) < 12).map((time) => (
-                              <Button
-                                key={time}
-                                variant={selectedTime === time ? "default" : "outline"}
-                                size="sm"
-                                onClick={() => setSelectedTime(time)}
-                                className={cn(
-                                  "rounded-xl font-semibold transition-all",
-                                  selectedTime === time && "shadow-lg shadow-primary/20"
-                                )}
-                              >
-                                {time}
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div>
-                          <p className="text-xs font-semibold text-muted-foreground mb-2">TARDE</p>
-                          <div className="grid grid-cols-3 gap-2">
-                            {availableTimes.filter(t => parseInt(t.split(':')[0]) >= 12).map((time) => (
-                              <Button
-                                key={time}
-                                variant={selectedTime === time ? "default" : "outline"}
-                                size="sm"
-                                onClick={() => setSelectedTime(time)}
-                                className={cn(
-                                  "rounded-xl font-semibold transition-all",
-                                  selectedTime === time && "shadow-lg shadow-primary/20"
-                                )}
-                              >
-                                {time}
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </Card>
-
-              {/* Summary Card */}
-              {selectedDate && selectedTime && (
-                <Card className="p-6 soft-shadow border-2 border-accent bg-gradient-to-br from-accent/5 to-background animate-fade-in">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 rounded-2xl bg-accent/10 flex items-center justify-center">
-                      <CheckCircle className="w-6 h-6 text-accent" />
-                    </div>
-                    <div>
-                      <h3 className="font-heading font-bold text-xl">Resumen de tu Reserva</h3>
-                      <p className="text-sm text-muted-foreground">Verifica los detalles antes de confirmar</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3 mb-6">
-                    <div className="flex items-center justify-between p-3 rounded-xl bg-background/50">
-                      <div className="flex items-center gap-3">
-                        <User className="w-5 h-5 text-primary" />
-                        <div>
-                          <p className="text-xs text-muted-foreground">Podólogo</p>
-                          <p className="font-semibold">{podologist.name}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between p-3 rounded-xl bg-background/50">
-                      <div className="flex items-center gap-3">
-                        <Calendar className="w-5 h-5 text-primary" />
-                        <div>
-                          <p className="text-xs text-muted-foreground">Fecha</p>
-                          <p className="font-semibold">
-                            {selectedDate.toLocaleDateString('es-CL', { 
-                              weekday: 'long', 
-                              day: 'numeric', 
-                              month: 'long',
-                              year: 'numeric'
-                            })}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between p-3 rounded-xl bg-background/50">
-                      <div className="flex items-center gap-3">
-                        <Clock className="w-5 h-5 text-primary" />
-                        <div>
-                          <p className="text-xs text-muted-foreground">Hora</p>
-                          <p className="font-semibold">{selectedTime} hrs</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Button 
+                  <Button
                     onClick={handleBooking}
                     size="lg"
-                    className="w-full rounded-xl shadow-lg shadow-accent/30 text-base"
+                    className="bg-white text-blue-600 hover:bg-gray-100 shadow-lg text-lg px-8 py-6 h-auto font-semibold"
                   >
-                    Continuar con Reserva
-                    <CheckCircle className="w-5 h-5 ml-2" />
+                    <CheckCircle2 className="mr-2 h-6 w-6" />
+                    Reservar Ahora
                   </Button>
-
-                  <p className="text-xs text-center text-muted-foreground mt-3">
-                    Al continuar, serás redirigido al formulario de reserva
-                  </p>
                 </Card>
-              )}
-
-              {/* Help Card */}
-              <Card className="p-6 soft-shadow border-0 bg-muted/30 animate-fade-in">
-                <h3 className="font-semibold mb-3">¿Necesitas ayuda?</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Si tienes dudas o necesitas cambiar tu hora, contáctanos:
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  <Button variant="outline" size="sm" className="rounded-xl" asChild>
-                    <a href={`tel:${podologist.phone}`}>
-                      <Phone className="w-4 h-4 mr-2" />
-                      Llamar
-                    </a>
-                  </Button>
-                  <Button variant="outline" size="sm" className="rounded-xl" asChild>
-                    <a href={`mailto:${podologist.email}`}>
-                      <Mail className="w-4 h-4 mr-2" />
-                      Email
-                    </a>
-                  </Button>
-                </div>
-              </Card>
-            </div>
+              </div>
+            )}
           </div>
-        </div>
-      </div>
+        </section>
 
-      <Footer />
-    </div>
+        <Footer />
+      </div>
+    </>
   );
 }
