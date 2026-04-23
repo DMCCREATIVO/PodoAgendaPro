@@ -36,7 +36,11 @@ position: 8
 - [x] Crear paneles protegidos (SuperAdmin, Admin, Podólogo, Paciente)
 - [x] Implementar guards de rutas
 - [x] Configurar usuarios demo
-- [ ] Desarrollar funcionalidad de cada panel
+- [x] Validar que login funciona para todos los roles
+- [ ] Desarrollar Panel SuperAdmin completo
+- [ ] Desarrollar Panel Admin completo
+- [ ] Desarrollar Panel Podólogo (CORE clínico)
+- [ ] Desarrollar Portal Paciente
 - [ ] Conectar paneles con datos reales de la BD
 
 ## Acceptance
