@@ -471,9 +471,9 @@ export default function SuperAdmin() {
       {/* Configuración Tab */}
       {activeTab === "configuracion" && (
         <div className="space-y-6 animate-fade-in">
-          <div>
-            <h1 className="font-heading font-bold text-3xl mb-2">Configuración del Sistema</h1>
-            <p className="text-muted-foreground">Ajustes globales de PODOS PRO</p>
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold mb-2">Configuración del Sistema</h2>
+            <p className="text-muted-foreground">Ajustes globales de PodoAgenda Pro</p>
           </div>
 
           <Card className="p-6 soft-shadow border-0">

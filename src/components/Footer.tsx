@@ -11,10 +11,10 @@ export function Footer() {
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
                 <span className="text-white font-bold text-lg">P</span>
               </div>
-              <span className="font-heading font-bold text-xl">PODOS PRO</span>
+              <span className="font-heading font-bold text-xl">PodoAgenda Pro</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              Sistema podológico profesional para clínicas modernas
+              Sistema profesional de gestión podológica. Todo lo que necesitas para tu clínica en un solo lugar.
             </p>
           </div>
 
@@ -40,16 +40,12 @@ export function Footer() {
             <h3 className="font-heading font-semibold text-sm mb-4">Contacto</h3>
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Mail className="w-4 h-4" />
+                <span>contacto@podoagenda.com</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Phone className="w-4 h-4" />
                 <span>+56 9 1234 5678</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Mail className="w-4 h-4" />
-                <span>contacto@podospro.cl</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="w-4 h-4" />
-                <span>Santiago, Chile</span>
               </div>
             </div>
           </div>
@@ -71,7 +67,7 @@ export function Footer() {
         </div>
 
         <div className="mt-12 pt-8 border-t text-center text-sm text-muted-foreground">
-          © {new Date().getFullYear()} PODOS PRO. Todos los derechos reservados.
+          © {new Date().getFullYear()} PodoAgenda Pro. Todos los derechos reservados.
         </div>
       </div>
     </footer>

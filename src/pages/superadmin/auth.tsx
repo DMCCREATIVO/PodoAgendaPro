@@ -56,81 +56,74 @@ export default function SuperAdminAuth() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-800 to-indigo-900">
+    <div className="min-h-screen bg-gradient-to-br from-purple-500/10 via-background to-purple-600/10 flex items-center justify-center p-4">
       <SEO
-        title="SuperAdmin Access - PODOS PRO"
-        description="Panel de administración del sistema PODOS PRO"
+        title="SuperAdmin Access - PodoAgenda Pro"
+        description="Panel de administración del sistema PodoAgenda Pro"
       />
 
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md p-8 bg-white/95 backdrop-blur-sm border-purple-200 shadow-2xl">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 mb-4">
-              <Shield className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              SuperAdmin Access
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Sistema de administración global PODOS PRO
-            </p>
+      <Card className="w-full max-w-md p-8 bg-card/80 backdrop-blur-sm border-2 border-purple-500/20 shadow-2xl">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-purple-500 to-purple-700 rounded-2xl flex items-center justify-center shadow-lg">
+            <Shield className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-2xl font-bold mb-2 bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">
+            SuperAdmin Access
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Sistema de administración global PodoAgenda Pro
+          </p>
+        </div>
+
+        <form onSubmit={handleLogin} className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-sm font-medium">
+              Email del SuperAdmin
+            </Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="superadmin@podoagenda.com"
+              value={loginForm.email}
+              onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
+              className="h-12 rounded-xl border-purple-500/20 focus:border-purple-500"
+              required
+            />
           </div>
 
-          {/* Login Form */}
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-purple-600" />
-                  Email SuperAdmin
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="superadmin@podospro.com"
-                  value={loginForm.email}
-                  onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
-                  required
-                  className="border-purple-200 focus:border-purple-600 focus:ring-purple-600"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password" className="flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-purple-600" />
-                  Contraseña
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={loginForm.password}
-                  onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                  required
-                  className="border-purple-200 focus:border-purple-600 focus:ring-purple-600"
-                />
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg"
-            >
-              {loading ? "Verificando..." : "Acceder al Sistema"}
-            </Button>
-          </form>
-
-          {/* Security Notice */}
-          <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-            <p className="text-xs text-purple-900 text-center">
-              <Shield className="w-3 h-3 inline mr-1" />
-              Acceso restringido. Solo usuarios con permisos de SuperAdmin pueden acceder.
-            </p>
+          <div className="space-y-2">
+            <Label htmlFor="password" className="flex items-center gap-2">
+              <Lock className="w-4 h-4 text-purple-600" />
+              Contraseña
+            </Label>
+            <Input
+              id="password"
+              type="password"
+              placeholder="••••••••"
+              value={loginForm.password}
+              onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+              required
+              className="border-purple-200 focus:border-purple-600 focus:ring-purple-600"
+            />
           </div>
-        </Card>
-      </div>
+
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg"
+          >
+            {loading ? "Verificando..." : "Acceder al Sistema"}
+          </Button>
+        </form>
+
+        {/* Security Notice */}
+        <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+          <p className="text-xs text-purple-900 text-center">
+            <Shield className="w-3 h-3 inline mr-1" />
+            Acceso restringido. Solo usuarios con permisos de SuperAdmin pueden acceder.
+          </p>
+        </div>
+      </Card>
     </div>
   );
 }

@@ -394,11 +394,14 @@ export default function CompanyLandingPage({ company, services, podiatrists }: C
                 </span>
               </div>
 
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>Powered by</span>
-                <Link href="/" className="font-semibold text-primary hover:underline">
-                  PODOS PRO
-                </Link>
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <Shield className="w-4 h-4" />
+                  Reserva protegida por
+                </p>
+                <p className="font-semibold text-lg">
+                  PodoAgenda Pro
+                </p>
               </div>
             </div>
           </div>

@@ -1,4 +1,4 @@
-# PODOS PRO – Sistema Podológico Completo
+# PodoAgenda Pro – Sistema Podológico Completo
 
 ## Vision
 Sistema clínico unitario premium para clínicas podológicas o podólogos independientes. Un ecosistema completo que integra agenda inteligente, ficha podológica profesional, portal de pacientes y panel administrativo — todo con diseño de nivel SaaS empresarial. Destinado a podólogos que buscan software real, usable en consulta diaria y presentable comercialmente.

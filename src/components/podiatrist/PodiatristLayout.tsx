@@ -5,6 +5,7 @@ import { Home, Stethoscope, Users, LogOut, Menu, X, Calendar, Clock, Settings } 
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { CompanySwitcher } from "@/components/CompanySwitcher";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 interface PodiatristLayoutProps {
   children: ReactNode;
@@ -20,27 +21,36 @@ const NAV_ITEMS = [
 
 export function PodiatristLayout({ children, activeTab }: PodiatristLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   return (
     <div className="min-h-screen bg-muted/20">
       {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 glass border-b z-50 flex items-center justify-between px-4">
-        <h1 className="font-heading font-bold text-xl">PODOS PRO</h1>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="rounded-xl"
-        >
-          {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-accent/10 rounded-lg flex items-center justify-center">
+            <span className="text-accent font-bold">P</span>
+          </div>
+          <h1 className="font-heading font-bold text-xl">PodoAgenda Pro</h1>
+        </div>
+        <Button variant="ghost" size="icon" onClick={() => setMobileSidebarOpen(true)}>
+          <Menu className="w-5 h-5" />
         </Button>
       </div>
 
-      {/* Sidebar - Desktop */}
-      <aside className="hidden lg:flex fixed left-0 top-0 bottom-0 w-72 glass-dark border-r flex-col z-40">
-        <div className="p-6 border-b border-white/10">
-          <h1 className="font-heading font-bold text-2xl text-white">PODOS PRO</h1>
-          <p className="text-white/60 text-sm mt-1">Panel Podólogo</p>
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-64 flex-col bg-gradient-to-br from-accent/5 via-background to-accent/10 border-r border-border/40 backdrop-blur-sm">
+        {/* Logo */}
+        <div className="p-6 border-b border-border/40">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-accent to-accent/60 rounded-xl flex items-center justify-center shadow-lg">
+              <span className="text-white font-bold text-lg">P</span>
+            </div>
+            <div>
+              <h1 className="font-heading font-bold text-2xl text-white">PodoAgenda Pro</h1>
+              <p className="text-xs text-muted-foreground">Panel Podólogo</p>
+            </div>
+          </div>
         </div>
 
         <nav className="flex-1 p-4 space-y-2">
@@ -78,22 +88,19 @@ export function PodiatristLayout({ children, activeTab }: PodiatristLayoutProps)
         </div>
       </aside>
 
-      {/* Sidebar - Mobile */}
-      {isSidebarOpen && (
-        <aside className="lg:hidden fixed inset-0 glass-dark z-40 flex flex-col">
-          <div className="p-6 border-b border-white/10 flex items-center justify-between">
-            <div>
-              <h1 className="font-heading font-bold text-2xl text-white">PODOS PRO</h1>
-              <p className="text-white/60 text-sm mt-1">Panel Podólogo</p>
+      {/* Mobile Sidebar */}
+      <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+        <SheetContent side="left" className="w-64 p-0 bg-gradient-to-br from-accent/5 via-background to-accent/10">
+          <div className="p-6 border-b border-border/40">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-accent to-accent/60 rounded-xl flex items-center justify-center shadow-lg">
+                <span className="text-white font-bold text-lg">P</span>
+              </div>
+              <div>
+                <h1 className="font-heading font-bold text-2xl text-white">PodoAgenda Pro</h1>
+                <p className="text-xs text-muted-foreground">Panel Podólogo</p>
+              </div>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsSidebarOpen(false)}
-              className="text-white rounded-xl"
-            >
-              <X className="w-5 h-5" />
-            </Button>
           </div>
 
           <nav className="flex-1 p-4 space-y-2">
@@ -107,7 +114,7 @@ export function PodiatristLayout({ children, activeTab }: PodiatristLayoutProps)
                     ? "bg-primary text-primary-foreground" 
                     : "text-white/80 hover:text-white hover:bg-white/10"
                 )}
-                onClick={() => setIsSidebarOpen(false)}
+                onClick={() => setMobileSidebarOpen(false)}
                 asChild
               >
                 <Link href={`/podologo?tab=${item.id}`}>
@@ -130,8 +137,8 @@ export function PodiatristLayout({ children, activeTab }: PodiatristLayoutProps)
               </Link>
             </Button>
           </div>
-        </aside>
-      )}
+        </SheetContent>
+      </Sheet>
 
       {/* Main Content */}
       <main className="lg:ml-72 pt-16 lg:pt-0">

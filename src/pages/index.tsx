@@ -135,7 +135,7 @@ export default function Home() {
       name: "Dr. Carlos Fernández",
       role: "Podólogo Clínico",
       clinic: "Clínica PodoSalud",
-      content: "PODOS PRO transformó completamente mi práctica. Ahora puedo ver 40% más pacientes sin sacrificar calidad de atención.",
+      content: "PodoAgenda Pro transformó completamente mi práctica. Ahora puedo ver 40% más pacientes sin sacrificar calidad de atención.",
       rating: 5,
       avatar: "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=120&h=120&fit=crop"
     },
@@ -154,6 +154,14 @@ export default function Home() {
       content: "Impresionante. La ficha digital me permite dar seguimiento preciso a atletas de alto rendimiento.",
       rating: 5,
       avatar: "https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=120&h=120&fit=crop"
+    },
+    {
+      name: "Dra. Ana Martínez",
+      specialty: "Podología Deportiva",
+      avatar: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=400",
+      rating: 4.9,
+      patients: 250,
+      content: "PodoAgenda Pro transformó completamente mi práctica. Ahora puedo ver 40% más pacientes sin sacrificar calidad de atención.",
     }
   ];
 
@@ -330,7 +338,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <Badge variant="outline" className="rounded-full mb-4">
-              ¿Por qué PODOS PRO?
+              ¿Por qué PodoAgenda Pro?
             </Badge>
             <h2 className="font-heading font-bold text-4xl lg:text-5xl mb-4">
               Beneficios reales para tu práctica
@@ -484,8 +492,8 @@ export default function Home() {
               <Award className="w-10 h-10 text-white" />
             </div>
             
-            <h2 className="font-heading font-bold text-4xl lg:text-5xl mb-4">
-              ¿Listo para transformar tu clínica?
+            <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">
+              Únete a miles de podólogos que ya optimizaron su práctica con PodoAgenda Pro
             </h2>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
               Únete a miles de podólogos que ya optimizaron su práctica con PODOS PRO

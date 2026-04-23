@@ -22,23 +22,31 @@ export function PatientLayout({ children, activeTab }: PatientLayoutProps) {
   return (
     <div className="min-h-screen bg-muted/20">
       {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 glass border-b z-50 flex items-center justify-between px-4">
-        <h1 className="font-heading font-bold text-xl">PODOS PRO</h1>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="rounded-xl"
-        >
-          {isSidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-sm border-b border-border px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+            <span className="text-primary font-bold">P</span>
+          </div>
+          <h1 className="font-heading font-bold text-xl">PodoAgenda Pro</h1>
+        </div>
+        <Button variant="ghost" size="icon" onClick={() => setMobileSidebarOpen(true)}>
+          <Menu className="w-5 h-5" />
         </Button>
       </div>
 
-      {/* Sidebar - Desktop */}
-      <aside className="hidden lg:flex fixed left-0 top-0 bottom-0 w-72 glass-dark border-r flex-col z-40">
-        <div className="p-6 border-b border-white/10">
-          <h1 className="font-heading font-bold text-2xl text-white">PODOS PRO</h1>
-          <p className="text-white/60 text-sm mt-1">Portal Paciente</p>
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-64 flex-col bg-gradient-to-br from-muted/30 via-background to-muted/20 border-r border-border/40 backdrop-blur-sm">
+        {/* Logo */}
+        <div className="p-6 border-b border-border/40">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/60 rounded-xl flex items-center justify-center shadow-lg">
+              <span className="text-white font-bold text-lg">P</span>
+            </div>
+            <div>
+              <h1 className="font-heading font-bold text-2xl text-white">PodoAgenda Pro</h1>
+              <p className="text-xs text-muted-foreground">Portal Paciente</p>
+            </div>
+          </div>
         </div>
 
         <nav className="flex-1 p-4 space-y-2">
@@ -76,22 +84,19 @@ export function PatientLayout({ children, activeTab }: PatientLayoutProps) {
         </div>
       </aside>
 
-      {/* Sidebar - Mobile */}
-      {isSidebarOpen && (
-        <aside className="lg:hidden fixed inset-0 glass-dark z-40 flex flex-col">
-          <div className="p-6 border-b border-white/10 flex items-center justify-between">
-            <div>
-              <h1 className="font-heading font-bold text-2xl text-white">PODOS PRO</h1>
-              <p className="text-white/60 text-sm mt-1">Portal Paciente</p>
+      {/* Mobile Sidebar */}
+      <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+        <SheetContent side="left" className="w-64 p-0 bg-gradient-to-br from-muted/30 via-background to-muted/20">
+          <div className="p-6 border-b border-border/40">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/60 rounded-xl flex items-center justify-center shadow-lg">
+                <span className="text-white font-bold text-lg">P</span>
+              </div>
+              <div>
+                <h1 className="font-heading font-bold text-2xl text-white">PodoAgenda Pro</h1>
+                <p className="text-xs text-muted-foreground">Portal Paciente</p>
+              </div>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsSidebarOpen(false)}
-              className="text-white rounded-xl"
-            >
-              <X className="w-5 h-5" />
-            </Button>
           </div>
 
           <nav className="flex-1 p-4 space-y-2">
@@ -128,8 +133,8 @@ export function PatientLayout({ children, activeTab }: PatientLayoutProps) {
               </Link>
             </Button>
           </div>
-        </aside>
-      )}
+        </SheetContent>
+      </Sheet>
 
       {/* Main Content */}
       <main className="lg:ml-72 pt-16 lg:pt-0">

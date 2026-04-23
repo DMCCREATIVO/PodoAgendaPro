@@ -55,12 +55,12 @@ export function AdminLayout({ children, activeTab = "dashboard" }: AdminLayoutPr
           {/* Logo */}
           <div className="flex items-center flex-shrink-0 px-6 mb-6">
             <Link href="/admin" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center group-hover:scale-110 transition-transform">
-                <span className="text-white font-bold text-lg">P</span>
+              <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+                <span className="text-primary font-bold text-lg">P</span>
               </div>
               <div>
-                <p className="font-heading font-bold text-lg">PODOS PRO</p>
-                <p className="text-xs text-muted-foreground">Panel Admin</p>
+                <p className="font-heading font-bold text-lg">PodoAgenda Pro</p>
+                <p className="text-xs text-muted-foreground">Admin Panel</p>
               </div>
             </Link>
           </div>

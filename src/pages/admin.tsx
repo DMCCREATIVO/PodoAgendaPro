@@ -1524,8 +1524,8 @@ export default function Admin() {
             <h2 className="font-heading font-bold text-xl mb-6">Información de la Clínica</h2>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>Nombre de la Clínica</Label>
-                <Input defaultValue="PODOS PRO" className="rounded-xl h-12" />
+                <Label htmlFor="company_name">Nombre de la Clínica</Label>
+                <Input defaultValue="PodoAgenda Pro" className="rounded-xl h-12" />
               </div>
               <div className="space-y-2">
                 <Label>Dirección</Label>
