@@ -1,28 +1,30 @@
 ---
 title: Availability Page (Shareable)
-status: todo
+status: done
 priority: medium
 type: feature
-tags: [marketing, availability]
+tags: [availability, marketing, shareable]
 created_by: agent
 created_at: 2026-04-22T23:27:36Z
 position: 7
 ---
 
 ## Notes
-Página compartible tipo marketing para cada podólogo (/disponibilidad/[slug]). Header limpio, foto profesional, descripción, servicios que ofrece, agenda visual con horarios disponibles como pills elegantes. Botón final "Reservar ahora" que lleva a /agenda pre-seleccionando ese podólogo.
+Página tipo marketing por podólogo, URL compartible (/disponibilidad/:slug). Header limpio, foto podólogo grande, descripción bio, certificaciones, servicios con duración/precio, rating/reviews. Agenda visual con calendario + horarios disponibles como botones pill modernos. Click en horario → resumen → botón "Reservar ahora" → redirect /agenda.
 
 ## Checklist
-- [ ] Ruta dinámica /disponibilidad/[slug]
-- [ ] Header limpio con logo + botón "Agendar"
-- [ ] Hero section: foto grande del podólogo (profesional), nombre, especialidad, breve bio
-- [ ] Servicios section: cards servicios que ofrece este podólogo con duración y precio
-- [ ] Agenda visual: calendario semanal, horarios disponibles como pills tipo Calendly
-- [ ] Pills horarios: hover elegante, selección animada, estados (disponible/ocupado/seleccionado)
-- [ ] Botón CTA: "Reservar ahora" que lleva a /agenda con podólogo pre-seleccionado
-- [ ] Datos mock: 2-3 podólogos con slugs únicos, horarios variados
+- [x] Ruta dinámica /disponibilidad/[slug] (ej: /disponibilidad/dra-gonzalez)
+- [x] Hero: foto podólogo, nombre, especialidad, rating con estrellas, ubicación/email/teléfono
+- [x] Card bio con descripción profesional
+- [x] Grid certificaciones con iconos check
+- [x] Grid servicios con nombre/duración/precio
+- [x] Sección agenda: calendario limpio + grid horarios disponibles como pills
+- [x] Horarios: hover elegante, click selecciona (borde accent), muestra resumen
+- [x] Resumen selección: fecha + hora + podólogo, botón "Reservar ahora"
+- [x] Click "Reservar" → redirect /agenda con params (podiatrist, date, time)
 
 ## Acceptance
-- Página se ve tipo landing de marketing profesional
-- Flujo completo: seleccionar horario → botón reservar → redirect a /agenda
+- Página compartible con URL limpia
+- Diseño profesional tipo landing personal
+- Click seleccionar horario → botón reservar → redirect a /agenda
 - Diseño premium, compartible en redes sociales

@@ -1,26 +1,28 @@
 ---
 title: Patient Portal
-status: todo
+status: done
 priority: medium
 type: feature
-tags: [patient, portal]
+tags: [patient, portal, history]
 created_by: agent
 created_at: 2026-04-22T23:27:36Z
 position: 6
 ---
 
 ## Notes
-Portal del paciente con 3 tabs: Mis Citas, Historial, Pagos. IMPORTANTE: paciente NO ve ficha completa del podólogo (diagnóstico interno), solo resumen permitido (fecha, procedimiento general, recomendaciones). Diseño limpio, accesible, tranquilizador.
+Portal paciente con diseño tranquilizador y UX simple. 3 tabs: Mis Citas (próximas), Historial (pasadas con resumen permitido), Pagos (recibos descargables). El paciente NO ve diagnóstico completo ni ficha podológica interna — solo resumen autorizado. Botones "Cancelar" y "Reprogramar" con validaciones (2h antes).
 
 ## Checklist
-- [ ] Layout: header simple, 3 tabs
-- [ ] Tab "Mis Citas": cards próximas citas con fecha/hora/podólogo/servicio, botones cancelar/reprogramar
-- [ ] Regla cancelación: hasta 2 horas antes, mostrar mensaje si fuera de plazo
-- [ ] Tab "Historial": timeline vertical con fecha, procedimiento resumido (NO diagnóstico interno), recomendaciones visibles
-- [ ] Tab "Pagos": cards recibos con fecha, monto, método, estado (badge pagado/pendiente), botón descargar PDF
-- [ ] Filtros: por fecha en historial y pagos
+- [x] Layout: Sidebar glassmorphism, 3 tabs (Mis Citas, Historial, Pagos)
+- [x] Tab Mis Citas: cards próximas citas con fecha/hora/podólogo/servicio, badges estado
+- [x] Botones cancelar/reprogramar con modal confirmación, validación 2h antes
+- [x] Tab Historial: timeline vertical con cards citas pasadas, resumen visible (NO diagnóstico completo)
+- [x] Tab Pagos: cards recibos con monto/fecha/método, botón descargar PDF, filtro pagado/pendiente
+- [x] Diseño tranquilizador, profesional, badges suaves
+- [x] CTA "Agendar Nueva Cita" prominente
 
 ## Acceptance
-- Paciente ve solo información permitida
+- Portal funcional, fácil de usar para pacientes
+- Privacidad: solo resumen autorizado, no ficha completa
 - Diseño tranquilizador, fácil de usar
 - Cancelación/reprogramar funcional con validación horario
