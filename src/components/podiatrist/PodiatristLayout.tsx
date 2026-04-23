@@ -1,7 +1,7 @@
 import { ReactNode, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Home, Stethoscope, Users, LogOut, Menu, X, Calendar } from "lucide-react";
+import { Home, Stethoscope, Users, LogOut, Menu, X, Calendar, Clock, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { CompanySwitcher } from "@/components/CompanySwitcher";
@@ -11,10 +11,11 @@ interface PodiatristLayoutProps {
   activeTab: string;
 }
 
-const NAVIGATION = [
-  { id: "dia", label: "Mi Día", icon: Home },
+const NAV_ITEMS = [
+  { id: "dia", label: "Mi Día", icon: Clock },
   { id: "atencion", label: "Atención", icon: Stethoscope },
   { id: "pacientes", label: "Mis Pacientes", icon: Users },
+  { id: "configuracion", label: "Configuración", icon: Settings },
 ];
 
 export function PodiatristLayout({ children, activeTab }: PodiatristLayoutProps) {
@@ -43,7 +44,7 @@ export function PodiatristLayout({ children, activeTab }: PodiatristLayoutProps)
         </div>
 
         <nav className="flex-1 p-4 space-y-2">
-          {NAVIGATION.map((item) => (
+          {NAV_ITEMS.map((item) => (
             <Button
               key={item.id}
               variant={activeTab === item.id ? "default" : "ghost"}
@@ -96,7 +97,7 @@ export function PodiatristLayout({ children, activeTab }: PodiatristLayoutProps)
           </div>
 
           <nav className="flex-1 p-4 space-y-2">
-            {NAVIGATION.map((item) => (
+            {NAV_ITEMS.map((item) => (
               <Button
                 key={item.id}
                 variant={activeTab === item.id ? "default" : "ghost"}

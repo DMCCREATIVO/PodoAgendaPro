@@ -1,7 +1,7 @@
 import { ReactNode, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Calendar, FileText, CreditCard, LogOut, Menu, X } from "lucide-react";
+import { Calendar, FileText, CreditCard, LogOut, Menu, X, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface PatientLayoutProps {
@@ -9,10 +9,11 @@ interface PatientLayoutProps {
   activeTab: string;
 }
 
-const NAVIGATION = [
+const NAV_ITEMS = [
   { id: "citas", label: "Mis Citas", icon: Calendar },
   { id: "historial", label: "Historial", icon: FileText },
   { id: "pagos", label: "Pagos", icon: CreditCard },
+  { id: "configuracion", label: "Configuración", icon: Settings },
 ];
 
 export function PatientLayout({ children, activeTab }: PatientLayoutProps) {
@@ -41,7 +42,7 @@ export function PatientLayout({ children, activeTab }: PatientLayoutProps) {
         </div>
 
         <nav className="flex-1 p-4 space-y-2">
-          {NAVIGATION.map((item) => (
+          {NAV_ITEMS.map((item) => (
             <Button
               key={item.id}
               variant={activeTab === item.id ? "default" : "ghost"}
@@ -94,7 +95,7 @@ export function PatientLayout({ children, activeTab }: PatientLayoutProps) {
           </div>
 
           <nav className="flex-1 p-4 space-y-2">
-            {NAVIGATION.map((item) => (
+            {NAV_ITEMS.map((item) => (
               <Button
                 key={item.id}
                 variant={activeTab === item.id ? "default" : "ghost"}

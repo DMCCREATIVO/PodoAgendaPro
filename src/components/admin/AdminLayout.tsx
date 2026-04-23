@@ -1,7 +1,7 @@
 import { ReactNode, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Calendar, Users, Stethoscope, DollarSign, Settings, LogOut, Menu, X } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, Stethoscope, DollarSign, Settings, LogOut, Menu, X, BarChart3, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { CompanySwitcher } from "@/components/CompanySwitcher";
@@ -11,13 +11,13 @@ interface AdminLayoutProps {
   activeTab: string;
 }
 
-const NAVIGATION = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+const NAV_ITEMS = [
+  { id: "dashboard", label: "Dashboard", icon: BarChart3 },
   { id: "agenda", label: "Agenda", icon: Calendar },
-  { id: "podologos", label: "Podólogos", icon: Stethoscope },
-  { id: "pacientes", label: "Pacientes", icon: Users },
+  { id: "podologos", label: "Podólogos", icon: Users },
+  { id: "pacientes", label: "Pacientes", icon: User },
   { id: "cobros", label: "Cobros", icon: DollarSign },
-  { id: "config", label: "Configuración", icon: Settings },
+  { id: "configuracion", label: "Configuración", icon: Settings },
 ];
 
 export function AdminLayout({ children, activeTab }: AdminLayoutProps) {
@@ -64,7 +64,7 @@ export function AdminLayout({ children, activeTab }: AdminLayoutProps) {
         </div>
 
         <nav className="flex-1 p-4 space-y-2">
-          {NAVIGATION.map((item) => (
+          {NAV_ITEMS.map((item) => (
             <Button
               key={item.id}
               variant={activeTab === item.id ? "default" : "ghost"}
@@ -117,7 +117,7 @@ export function AdminLayout({ children, activeTab }: AdminLayoutProps) {
           </div>
 
           <nav className="flex-1 p-4 space-y-2">
-            {NAVIGATION.map((item) => (
+            {NAV_ITEMS.map((item) => (
               <Button
                 key={item.id}
                 variant={activeTab === item.id ? "default" : "ghost"}
