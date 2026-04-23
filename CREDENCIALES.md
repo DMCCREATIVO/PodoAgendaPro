@@ -1,16 +1,22 @@
-# 🔐 CREDENCIALES DE ACCESO - PODOS PRO
+# 🔐 CREDENCIALES DE ACCESO - PodoAgenda Pro
 
 ## 🎯 ARQUITECTURA DE ACCESO (IMPORTANTE)
 
-El sistema tiene **2 puntos de entrada completamente separados**:
+El sistema tiene **3 puntos de entrada separados**:
 
-### **1. Acceso Global - SuperAdmin y Registro de Empresas**
-**URL:** `/auth`
-- Login simple (email + contraseña)
+### **1. SuperAdmin - Acceso Global Seguro**
+**URL:** `/superadmin/auth` (exclusiva y oculta)
+- Login simple para SuperAdmin
 - **SIN selector de roles**
-- Para SuperAdmin y registro de nuevas empresas
+- Acceso total al sistema
 
-### **2. Acceso por Empresa - Podólogos y Pacientes**
+### **2. Empresas - Login y Registro Público**
+**URL:** `/auth`
+- **Tab "Iniciar Sesión"** - Para empresas existentes
+- **Tab "Crear Empresa"** - Para nuevas clínicas con selector de planes
+- Registro público con 3 planes disponibles
+
+### **3. Podólogos/Pacientes - Acceso por Empresa**
 **URL:** `/[slug]/auth` (ejemplo: `/centro-podosalud/auth`)
 - Login **CON selector de roles** (Administrador, Podólogo, Paciente)
 - Cada empresa tiene su propia URL personalizada
@@ -20,26 +26,22 @@ El sistema tiene **2 puntos de entrada completamente separados**:
 ## 👑 SUPERADMIN (Acceso Global)
 
 ### **Cómo Acceder:**
-1. Ir a: `/superadmin/auth` (URL exclusiva y segura)
-2. Verás: Login simple para SuperAdmin (púrpura)
-3. Email: `superadmin@podospro.com`
+1. Ir a: `/superadmin/auth`
+2. Verás: Login simple morado (NO hay selector de roles)
+3. Email: `superadmin@podoagenda.com`
 4. Contraseña: `PodosPro2024!Super`
 5. Click "Acceder al Sistema"
 6. Redirección automática a `/superadmin`
-
-**IMPORTANTE:** La URL `/superadmin/auth` es exclusiva para SuperAdmin. No confundir con:
-- `/auth` → Registro público de nuevas empresas
-- `/[slug]/auth` → Login de empresas (podólogos/pacientes)
 
 ### **Panel SuperAdmin:**
 - Sidebar morado con gradiente
 - Badge "SuperAdmin" destacado
 - 5 tabs funcionales:
-  * Dashboard Global
-  * Empresas (crear/gestionar todas)
-  * Usuarios (ver todos los usuarios del sistema)
-  * Planes (gestionar planes de suscripción)
-  * Configuración (settings del sistema)
+  * Dashboard Global (estadísticas del sistema)
+  * Empresas (crear/gestionar todas las clínicas)
+  * Usuarios (ver todos los usuarios)
+  * Planes (gestionar suscripciones)
+  * Configuración (settings globales)
 
 ### **Permisos:**
 - ✅ Ver todas las empresas del sistema
@@ -137,84 +139,29 @@ El sistema tiene **2 puntos de entrada completamente separados**:
 
 ---
 
-## 🔄 FLUJOS DE ACCESO DETALLADOS
-
-### **Flujo 1: SuperAdmin**
-```
-Paso 1: Abrir navegador
-Paso 2: Ir a /auth
-Paso 3: Ver login simple (SIN selector de roles)
-Paso 4: Email: superadmin@podospro.com
-Paso 5: Password: PodosPro2024!Super
-Paso 6: Click "Iniciar Sesión"
-Paso 7: Sistema detecta is_superadmin: true
-Paso 8: Redirección automática → /superadmin
-Paso 9: Panel morado con 5 tabs operativas
-```
-
-### **Flujo 2: Admin de Empresa**
-```
-Paso 1: Abrir navegador
-Paso 2: Ir a /centro-podosalud/auth
-Paso 3: Ver selector de 3 roles (cards grandes)
-Paso 4: Click en card "Administrador"
-Paso 5: Email: admin@centropodosalud.cl
-Paso 6: Password: Admin123!
-Paso 7: Click "Iniciar Sesión"
-Paso 8: Sistema detecta role: owner
-Paso 9: Redirección automática → /admin
-Paso 10: Panel azul con 6 tabs
-```
-
-### **Flujo 3: Podólogo**
-```
-Paso 1: Ir a /centro-podosalud/auth
-Paso 2: Ver selector de 3 roles
-Paso 3: Click en card "Podólogo"
-Paso 4: Email: dra.martinez@centropodosalud.cl
-Paso 5: Password: Podo123!
-Paso 6: Click "Iniciar Sesión"
-Paso 7: Sistema detecta role: podiatrist
-Paso 8: Redirección automática → /podologo
-Paso 9: Panel verde con 4 tabs
-```
-
-### **Flujo 4: Paciente**
-```
-Paso 1: Ir a /centro-podosalud/auth
-Paso 2: Ver selector de 3 roles
-Paso 3: Click en card "Paciente"
-Paso 4: Email: juan.perez@email.com
-Paso 5: Password: Paciente123!
-Paso 6: Click "Iniciar Sesión"
-Paso 7: Sistema detecta role: patient
-Paso 8: Redirección automática → /cliente
-Paso 9: Panel neutral con 4 tabs
-```
-
----
-
 ## 🆕 CREAR NUEVA EMPRESA
 
-### **Desde Landing Pública:**
-1. Ir a `/` (landing SaaS)
-2. Click "Empezar Ahora"
-3. Completar formulario de registro:
+### **Desde Página Pública (`/auth`):**
+1. Ir a `/auth`
+2. Click en tab "Crear Empresa"
+3. Completar formulario:
    - Nombre completo
    - Email
    - Contraseña
    - Nombre de la clínica
    - Teléfono
-4. Seleccionar plan (Starter/Professional/Enterprise)
-5. Aceptar términos y condiciones
-6. Click "Crear Cuenta Gratis"
-7. Sistema crea automáticamente:
+4. **Seleccionar plan:**
+   - **Starter** - $29/mes (1 podólogo, 100 pacientes)
+   - **Professional** - $79/mes (5 podólogos, ilimitado) [MÁS POPULAR]
+   - **Enterprise** - Custom (ilimitado, multi-sucursal)
+5. Click "Crear Empresa Gratis"
+6. Sistema crea automáticamente:
    - Usuario owner
    - Empresa nueva
    - URL personalizada (slug)
-8. Redirección a `/onboarding`
-9. Completar 3 pasos de configuración inicial
-10. Redirección a `/admin`
+7. Redirección a `/onboarding`
+8. Completar 3 pasos de configuración inicial
+9. Redirección a `/admin`
 
 ### **Desde SuperAdmin:**
 1. Login como SuperAdmin
@@ -226,6 +173,60 @@ Paso 9: Panel neutral con 4 tabs
 
 ---
 
+## 🔄 FLUJOS DE ACCESO DETALLADOS
+
+### **Flujo 1: SuperAdmin**
+```
+Paso 1: Ir a /superadmin/auth
+Paso 2: Ver login simple morado (SIN selector de roles)
+Paso 3: Email: superadmin@podoagenda.com
+Paso 4: Password: PodosPro2024!Super
+Paso 5: Click "Acceder al Sistema"
+Paso 6: Sistema detecta is_superadmin: true
+Paso 7: Redirección automática → /superadmin
+Paso 8: Panel morado con 5 tabs operativas
+```
+
+### **Flujo 2: Login Empresa Existente**
+```
+Paso 1: Ir a /auth
+Paso 2: Click en tab "Iniciar Sesión"
+Paso 3: Email: admin@centropodosalud.cl
+Paso 4: Password: Admin123!
+Paso 5: Click "Iniciar Sesión"
+Paso 6: Sistema detecta empresa existente
+Paso 7: Redirección automática → /admin
+```
+
+### **Flujo 3: Crear Nueva Empresa**
+```
+Paso 1: Ir a /auth
+Paso 2: Click en tab "Crear Empresa"
+Paso 3: Completar formulario (nombre, email, clínica, etc.)
+Paso 4: Seleccionar plan (Starter/Professional/Enterprise)
+Paso 5: Click "Crear Empresa Gratis"
+Paso 6: Sistema crea usuario + empresa + slug
+Paso 7: Redirección a /onboarding
+Paso 8: Configuración inicial (3 pasos)
+Paso 9: Redirección a /admin
+```
+
+### **Flujo 4: Login Podólogo/Paciente**
+```
+Paso 1: Ir a /centro-podosalud/auth
+Paso 2: Ver selector de 3 roles
+Paso 3: Seleccionar rol (Administrador/Podólogo/Paciente)
+Paso 4: Email + Password
+Paso 5: Click "Iniciar Sesión"
+Paso 6: Sistema detecta role
+Paso 7: Redirección según rol:
+  - Admin → /admin
+  - Podólogo → /podologo
+  - Paciente → /cliente
+```
+
+---
+
 ## 🛡️ PROTECCIÓN DE RUTAS
 
 El sistema redirige automáticamente según tu rol:
@@ -233,7 +234,7 @@ El sistema redirige automáticamente según tu rol:
 ### **Si NO estás autenticado:**
 - Intentas ir a `/admin` → Redirige a `/auth`
 - Intentas ir a `/podologo` → Redirige a `/auth`
-- Intentas ir a `/superadmin` → Redirige a `/auth`
+- Intentas ir a `/superadmin` → Redirige a `/superadmin/auth`
 
 ### **Si eres SuperAdmin:**
 - Intentas ir a `/admin` → Redirige a `/superadmin`
@@ -261,8 +262,8 @@ El sistema redirige automáticamente según tu rol:
 
 ### **"No puedo acceder al panel SuperAdmin"**
 **Solución:**
-1. Verifica que estés usando: `/auth` (NO `/centro-podosalud/auth`)
-2. Email exacto: `superadmin@podospro.com`
+1. Verifica que estés usando: `/superadmin/auth` (NO `/auth`)
+2. Email exacto: `superadmin@podoagenda.com`
 3. Password exacto: `PodosPro2024!Super`
 4. Si ves selector de roles = estás en la URL incorrecta
 
@@ -273,12 +274,44 @@ El sistema redirige automáticamente según tu rol:
 - Podólogo → `/podologo`
 - Paciente → `/cliente`
 
-### **"Veo un panel que no me corresponde"**
+### **"No veo el tab de Login en /auth"**
 **Solución:**
-1. Cerrar sesión
-2. Verificar la URL de login correcta
-3. Seleccionar el rol correcto (si aplica)
-4. Login nuevamente
+1. Refresca la página
+2. Verás 2 tabs: "Iniciar Sesión" y "Crear Empresa"
+3. Click en "Iniciar Sesión" para empresas existentes
+
+### **"¿Dónde selecciono el plan?"**
+El selector de planes aparece en el tab "Crear Empresa" de `/auth`.
+Hay 3 opciones: Starter, Professional, Enterprise.
+
+---
+
+## 💰 PLANES DISPONIBLES
+
+### **Starter - $29/mes**
+- 1 Podólogo
+- Hasta 100 pacientes
+- Agenda básica
+- Portal paciente
+- Soporte email
+
+### **Professional - $79/mes** [MÁS POPULAR]
+- Hasta 5 Podólogos
+- Pacientes ilimitados
+- Ficha podológica completa
+- Analytics avanzados
+- Personalización de marca
+- Recordatorios automáticos
+- Soporte prioritario
+
+### **Enterprise - Custom**
+- Podólogos ilimitados
+- Multi-sucursal
+- API & Integraciones
+- Branding white-label
+- Capacitación dedicada
+- Soporte 24/7
+- SLA garantizado
 
 ---
 
@@ -311,9 +344,19 @@ Al desplegar:
 3. ✅ Habilitar 2FA para SuperAdmin
 4. ✅ Configurar políticas de seguridad adicionales
 5. ✅ Revisar permisos de RLS en Supabase
+6. ✅ Actualizar dominios de email
+
+---
+
+## 📧 CONTACTO
+
+**Soporte Técnico:** soporte@podoagenda.com
+**Ventas:** ventas@podoagenda.com
+**General:** contacto@podoagenda.com
 
 ---
 
 **Última actualización:** 2026-04-23
 **Versión del Sistema:** 1.0.0
 **Estado:** ✅ Sistema Completamente Operativo
+**Branding:** PodoAgenda Pro
