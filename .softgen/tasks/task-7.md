@@ -3,28 +3,32 @@ title: Availability Page (Shareable)
 status: done
 priority: medium
 type: feature
-tags: [availability, marketing, shareable]
+tags: [availability, marketing, booking]
 created_by: agent
 created_at: 2026-04-22T23:27:36Z
 position: 7
 ---
 
 ## Notes
-Página tipo marketing por podólogo, URL compartible (/disponibilidad/:slug). Header limpio, foto podólogo grande, descripción bio, certificaciones, servicios con duración/precio, rating/reviews. Agenda visual con calendario + horarios disponibles como botones pill modernos. Click en horario → resumen → botón "Reservar ahora" → redirect /agenda.
+Página compartible tipo marketing para cada podólogo. URL: /disponibilidad/[slug]. Debe incluir foto, descripción, servicios, agenda visual con horarios disponibles. Botones de horarios con diseño moderno tipo pill, hover elegante, selección animada. Botón final "Reservar ahora" que lleva al flujo de reserva con datos pre-seleccionados.
 
 ## Checklist
-- [x] Ruta dinámica /disponibilidad/[slug] (ej: /disponibilidad/dra-gonzalez)
-- [x] Hero: foto podólogo, nombre, especialidad, rating con estrellas, ubicación/email/teléfono
-- [x] Card bio con descripción profesional
-- [x] Grid certificaciones con iconos check
-- [x] Grid servicios con nombre/duración/precio
-- [x] Sección agenda: calendario limpio + grid horarios disponibles como pills
-- [x] Horarios: hover elegante, click selecciona (borde accent), muestra resumen
-- [x] Resumen selección: fecha + hora + podólogo, botón "Reservar ahora"
-- [x] Click "Reservar" → redirect /agenda con params (podiatrist, date, time)
+- [x] Layout limpio con Navigation y Footer
+- [x] Header con foto del podólogo, nombre, especialidad, rating
+- [x] Card de perfil con experiencia, email, teléfono, ubicación
+- [x] Card "Acerca de" con bio y certificaciones
+- [x] Card de servicios disponibles con precio y duración
+- [x] Calendario visual para selección de fecha
+- [x] Grid de horarios disponibles (mañana/tarde) con diseño pill
+- [x] Hover y selección animada en horarios
+- [x] Card de resumen de reserva cuando hay fecha+hora seleccionada
+- [x] Botón "Continuar con Reserva" que redirige a /agenda con datos pre-cargados
+- [x] Card de ayuda con botones llamar/email
+- [x] Diseño responsive y premium
 
 ## Acceptance
-- Página compartible con URL limpia
-- Diseño profesional tipo landing personal
-- Click seleccionar horario → botón reservar → redirect a /agenda
-- Diseño premium, compartible en redes sociales
+- Página atractiva tipo landing de podólogo individual
+- Calendario funcional con días bloqueados (domingos, pasado)
+- Horarios como pills con animación al seleccionar
+- Resumen dinámico aparece al completar selección
+- Redirección a agenda con parámetros URL
