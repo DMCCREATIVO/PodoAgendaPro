@@ -32,7 +32,7 @@ export default function Login() {
       window.location.href = "/superadmin";
     } else if (session.role === "owner") {
       window.location.href = "/admin";
-    } else if (session.role === "podiatrist") {
+    } else if (session.role === "employee") {
       window.location.href = "/podologo";
     } else {
       window.location.href = "/cliente";

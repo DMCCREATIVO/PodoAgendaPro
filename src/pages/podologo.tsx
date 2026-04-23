@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/router";
 import { authService } from "@/services/auth";
 import { SEO } from "@/components/SEO";
@@ -9,6 +10,7 @@ import { Stethoscope, LogOut, CheckCircle } from "lucide-react";
 export default function Podologo() {
   const router = useRouter();
   const session = authService.getSession();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const session = authService.getSession();
