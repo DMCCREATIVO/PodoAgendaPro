@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
+import Link from "next/link";
 import { PatientLayout } from "@/components/patient/PatientLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -179,10 +180,10 @@ export default function Cliente() {
 
           <div className="flex justify-center pt-4">
             <Button size="lg" className="rounded-2xl shadow-lg shadow-primary/20" asChild>
-              <a href="/agenda">
+              <Link href="/agenda">
                 <Calendar className="w-5 h-5 mr-2" />
                 Agendar Nueva Cita
-              </a>
+              </Link>
             </Button>
           </div>
         </div>
