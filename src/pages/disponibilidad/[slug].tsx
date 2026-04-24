@@ -34,9 +34,9 @@ interface Company {
   name: string;
   slug: string;
   logo_url: string | null;
-  custom_colors: {
-    primary?: string;
-    secondary?: string;
+  metadata: {
+    primary_color?: string;
+    secondary_color?: string;
   } | null;
 }
 
@@ -86,13 +86,22 @@ export default function PodologistAvailability() {
         .map(word => word.charAt(0).toUpperCase() + word.slice(1))
         .join(" ");
 
-      // Find podologist by name
+      // Find podologist by name through company_users
       const { data: podologistData, error: podologistError } = await supabase
-        .from("users")
-        .select("id, name, email, role, company_id")
+        .from("company_users")
+        .select(`
+          role,
+          company_id,
+          user_id,
+          users!inner (
+            id,
+            full_name,
+            email
+          )
+        `)
         .eq("role", "employee")
         .eq("status", "active")
-        .ilike("name", `%${nameFromSlug}%`)
+        .ilike("users.full_name", `%${nameFromSlug}%`)
         .single();
 
       if (podologistError || !podologistData) {
@@ -101,17 +110,23 @@ export default function PodologistAvailability() {
         return;
       }
 
-      setPodologist(podologistData);
+      setPodologist({
+        id: podologistData.users.id,
+        name: podologistData.users.full_name,
+        email: podologistData.users.email,
+        role: podologistData.role,
+        company_id: podologistData.company_id
+      });
 
       // Load company
       const { data: companyData } = await supabase
         .from("companies")
-        .select("id, name, slug, logo_url, custom_colors")
+        .select("id, name, slug, logo_url, metadata")
         .eq("id", podologistData.company_id)
         .single();
 
       if (companyData) {
-        setCompany(companyData);
+        setCompany(companyData as unknown as Company);
       }
 
       // Load services
@@ -119,7 +134,7 @@ export default function PodologistAvailability() {
         .from("services")
         .select("id, name, description, duration_minutes, price")
         .eq("company_id", podologistData.company_id)
-        .eq("status", "active")
+        .eq("is_active", true)
         .order("name");
 
       if (servicesData) {
@@ -237,8 +252,8 @@ export default function PodologistAvailability() {
     );
   }
 
-  const primaryColor = company?.custom_colors?.primary || "#2563EB";
-  const secondaryColor = company?.custom_colors?.secondary || "#8B5CF6";
+  const primaryColor = company?.metadata?.primary_color || "#2563EB";
+  const secondaryColor = company?.metadata?.secondary_color || "#8B5CF6";
 
   const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentMonth);
 
