@@ -151,6 +151,7 @@ export default function Admin() {
     } catch (error) {
       console.error("💥 Error en checkAuth:", error);
       setLoading(false);
+      authService.logout(); // Romper el loop infinito borrando la sesión
       router.replace("/login");
     }
   };

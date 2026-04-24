@@ -19,6 +19,8 @@ export default function Login() {
     email: "",
     password: "",
   });
+  
+  const [selectedRole, setSelectedRole] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
