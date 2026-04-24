@@ -14,13 +14,12 @@ export default function Login() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
-  
-  const [selectedRole, setSelectedRole] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
