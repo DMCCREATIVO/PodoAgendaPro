@@ -11,7 +11,9 @@ import {
   LogOut,
   Menu,
   X,
-  Stethoscope
+  Stethoscope,
+  UserCircle,
+  Palette
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,12 +59,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   };
 
   const navItems = [
-    { icon: LayoutDashboard, label: "Dashboard", href: "/admin?tab=dashboard" },
-    { icon: Calendar, label: "Agenda", href: "/admin?tab=agenda" },
-    { icon: Stethoscope, label: "Podólogos", href: "/admin?tab=podologos" },
-    { icon: Users, label: "Pacientes", href: "/admin?tab=pacientes" },
-    { icon: DollarSign, label: "Cobros", href: "/admin?tab=cobros" },
-    { icon: Settings, label: "Configuración", href: "/admin?tab=config" },
+    { name: "Dashboard", icon: LayoutDashboard, path: "/admin" },
+    { name: "Agenda", icon: Calendar, path: "/admin?tab=agenda" },
+    { name: "Podólogos", icon: Users, path: "/admin?tab=podologos" },
+    { name: "Pacientes", icon: UserCircle, path: "/admin?tab=pacientes" },
+    { name: "Cobros", icon: DollarSign, path: "/admin?tab=cobros" },
+    { name: "Personalización Web", icon: Palette, path: "/admin-customization" },
+    { name: "Configuración", icon: Settings, path: "/admin?tab=configuracion" },
   ];
 
   return (
@@ -127,9 +130,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           <nav className="p-4 space-y-2">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = router.asPath === item.href;
+              const isActive = router.asPath === item.path;
               return (
-                <Link key={item.href} href={item.href}>
+                <Link key={item.path} href={item.path}>
                   <div
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                       isActive
@@ -139,7 +142,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                     style={isActive ? { background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})` } : {}}
                   >
                     <Icon className="h-5 w-5" />
-                    <span className="font-medium">{item.label}</span>
+                    <span className="font-medium">{item.name}</span>
                   </div>
                 </Link>
               );
