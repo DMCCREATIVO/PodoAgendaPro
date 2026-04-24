@@ -109,6 +109,61 @@ export type Database = {
           },
         ]
       }
+      audit_logs: {
+        Row: {
+          action: string
+          company_id: string | null
+          created_at: string | null
+          details: Json | null
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          company_id?: string | null
+          created_at?: string | null
+          details?: Json | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          company_id?: string | null
+          created_at?: string | null
+          details?: Json | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_logs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "public_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_conditions: {
         Row: {
           client_id: string
@@ -358,15 +413,20 @@ export type Database = {
           address: string | null
           country_code: string | null
           created_at: string | null
+          default_admin_password: string | null
           deleted_at: string | null
           email: string | null
           id: string
           industry: string | null
           is_active: boolean | null
           logo_url: string | null
+          max_monthly_appointments: number | null
+          max_podiatrists: number | null
+          max_users: number | null
           metadata: Json | null
           name: string
           phone: string | null
+          plan: string | null
           plan_id: string | null
           plan_status: string | null
           settings: Json | null
@@ -385,15 +445,20 @@ export type Database = {
           address?: string | null
           country_code?: string | null
           created_at?: string | null
+          default_admin_password?: string | null
           deleted_at?: string | null
           email?: string | null
           id?: string
           industry?: string | null
           is_active?: boolean | null
           logo_url?: string | null
+          max_monthly_appointments?: number | null
+          max_podiatrists?: number | null
+          max_users?: number | null
           metadata?: Json | null
           name: string
           phone?: string | null
+          plan?: string | null
           plan_id?: string | null
           plan_status?: string | null
           settings?: Json | null
@@ -412,15 +477,20 @@ export type Database = {
           address?: string | null
           country_code?: string | null
           created_at?: string | null
+          default_admin_password?: string | null
           deleted_at?: string | null
           email?: string | null
           id?: string
           industry?: string | null
           is_active?: boolean | null
           logo_url?: string | null
+          max_monthly_appointments?: number | null
+          max_podiatrists?: number | null
+          max_users?: number | null
           metadata?: Json | null
           name?: string
           phone?: string | null
+          plan?: string | null
           plan_id?: string | null
           plan_status?: string | null
           settings?: Json | null
@@ -950,9 +1020,11 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string | null
+          created_by: string | null
           email: string
           full_name: string | null
           id: string
+          is_active: boolean | null
           is_superadmin: boolean | null
           last_login_at: string | null
           phone: string | null
@@ -960,9 +1032,11 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string | null
+          created_by?: string | null
           email: string
           full_name?: string | null
           id: string
+          is_active?: boolean | null
           is_superadmin?: boolean | null
           last_login_at?: string | null
           phone?: string | null
@@ -970,9 +1044,11 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string | null
+          created_by?: string | null
           email?: string
           full_name?: string | null
           id?: string
+          is_active?: boolean | null
           is_superadmin?: boolean | null
           last_login_at?: string | null
           phone?: string | null

@@ -29,7 +29,26 @@ import {
   X,
   Palette,
   Settings as SettingsIcon,
+  Copy,
+  Eye,
+  EyeOff,
+  Crown,
+  Zap,
+  Rocket,
+  AlertCircle,
+  Clock,
 } from "lucide-react";
+
+// Tipos
+interface Plan {
+  id: string;
+  name: string;
+  price_monthly: number;
+  max_users: number;
+  max_podiatrists: number;
+  max_monthly_appointments: number;
+  features: string[];
+}
 
 export default function SuperAdmin() {
   const router = useRouter();
@@ -42,6 +61,7 @@ export default function SuperAdmin() {
   // Estados para datos
   const [companies, setCompanies] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [stats, setStats] = useState({
     totalCompanies: 0,
     totalUsers: 0,
@@ -52,23 +72,37 @@ export default function SuperAdmin() {
   // Estados para modales
   const [companyDialogOpen, setCompanyDialogOpen] = useState(false);
   const [userDialogOpen, setUserDialogOpen] = useState(false);
+  const [credentialsDialogOpen, setCredentialsDialogOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<any>(null);
   const [editingUser, setEditingUser] = useState<any>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [generatedCredentials, setGeneratedCredentials] = useState<{
+    email: string;
+    password: string;
+    companyName?: string;
+    companySlug?: string;
+  } | null>(null);
 
   // Form states
   const [companyForm, setCompanyForm] = useState({
     name: "",
+    slug: "",
     email: "",
     phone: "",
     address: "",
     primary_color: "#2563EB",
     secondary_color: "#8B5CF6",
     logo_url: "",
+    plan: "free" as "free" | "pro" | "enterprise",
+    admin_email: "",
+    admin_name: "",
+    admin_password: "",
   });
 
   const [userForm, setUserForm] = useState({
     email: "",
     full_name: "",
+    password: "",
     role: "patient" as "patient" | "owner" | "employee",
     company_id: "",
   });
@@ -108,49 +142,143 @@ export default function SuperAdmin() {
       
       setUsers(usersData || []);
 
+      // Cargar planes
+      const { data: plansData } = await supabase
+        .from("plans")
+        .select("*")
+        .eq("is_active", true)
+        .order("price_monthly", { ascending: true });
+      
+      setPlans(plansData || []);
+
       // Calcular estadísticas
       setStats({
         totalCompanies: companiesData?.length || 0,
         totalUsers: usersData?.length || 0,
-        activeCompanies: companiesData?.filter((c: any) => c.is_active).length || 0,
-        monthlyRevenue: 0, // TODO: calcular desde payments
+        activeCompanies: companiesData?.filter((c: any) => c.is_active && c.plan_status === 'active').length || 0,
+        monthlyRevenue: companiesData?.reduce((sum: number, c: any) => {
+          const plan = plansData?.find((p: any) => p.id === c.plan);
+          return sum + (plan?.price_monthly || 0);
+        }, 0) || 0,
       });
     } catch (error) {
       console.error("Error loading data:", error);
     }
   };
 
+  const generateSlug = (name: string) => {
+    return name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+  };
+
+  const generatePassword = () => {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%";
+    let password = "";
+    for (let i = 0; i < 12; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  };
+
   const handleCreateCompany = async () => {
     try {
+      // Generar slug si está vacío
+      const slug = companyForm.slug || generateSlug(companyForm.name);
+      
+      // Generar contraseña para el admin si está vacía
+      const adminPassword = companyForm.admin_password || generatePassword();
+
+      // Obtener límites del plan seleccionado
+      const selectedPlan = plans.find(p => p.id === companyForm.plan);
+
       const companyData = {
         name: companyForm.name,
-        slug: companyForm.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.floor(Math.random() * 10000),
+        slug: slug,
         email: companyForm.email,
         phone: companyForm.phone,
         address: companyForm.address,
         logo_url: companyForm.logo_url,
+        plan: companyForm.plan,
+        plan_status: 'trial',
+        max_users: selectedPlan?.max_users || 5,
+        max_podiatrists: selectedPlan?.max_podiatrists || 1,
+        max_monthly_appointments: selectedPlan?.max_monthly_appointments || 50,
+        default_admin_password: adminPassword,
         metadata: {
           primary_color: companyForm.primary_color,
           secondary_color: companyForm.secondary_color
         }
       };
 
-      const { error } = await supabase
+      const { data: company, error: companyError } = await supabase
         .from("companies")
-        .insert([companyData]);
+        .insert([companyData])
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (companyError) throw companyError;
+
+      // Crear usuario admin de la empresa
+      const userId = typeof crypto !== 'undefined' && crypto.randomUUID 
+        ? crypto.randomUUID() 
+        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { 
+            const r = Math.random() * 16 | 0; 
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); 
+          });
+
+      const { data: adminUser, error: userError } = await supabase
+        .from("users")
+        .insert([{
+          id: userId,
+          email: companyForm.admin_email,
+          full_name: companyForm.admin_name,
+          is_active: true,
+          created_by: session?.userId,
+        }])
+        .select()
+        .single();
+
+      if (userError) throw userError;
+
+      // Crear relación company_users
+      const { error: relationError } = await supabase
+        .from("company_users")
+        .insert([{
+          user_id: adminUser.id,
+          company_id: company.id,
+          role: 'owner',
+        }]);
+
+      if (relationError) throw relationError;
+
+      // Guardar credenciales generadas
+      setGeneratedCredentials({
+        email: companyForm.admin_email,
+        password: adminPassword,
+        companyName: company.name,
+        companySlug: company.slug,
+      });
 
       toast({ title: "✅ Empresa creada exitosamente" });
       setCompanyDialogOpen(false);
+      setCredentialsDialogOpen(true);
       setCompanyForm({
         name: "",
+        slug: "",
         email: "",
         phone: "",
         address: "",
         primary_color: "#2563EB",
         secondary_color: "#8B5CF6",
         logo_url: "",
+        plan: "free",
+        admin_email: "",
+        admin_name: "",
+        admin_password: "",
       });
       loadData();
     } catch (error: any) {
@@ -164,12 +292,19 @@ export default function SuperAdmin() {
 
   const handleUpdateCompany = async () => {
     try {
+      const selectedPlan = plans.find(p => p.id === companyForm.plan);
+
       const companyData = {
         name: companyForm.name,
+        slug: companyForm.slug,
         email: companyForm.email,
         phone: companyForm.phone,
         address: companyForm.address,
         logo_url: companyForm.logo_url,
+        plan: companyForm.plan,
+        max_users: selectedPlan?.max_users || editingCompany.max_users,
+        max_podiatrists: selectedPlan?.max_podiatrists || editingCompany.max_podiatrists,
+        max_monthly_appointments: selectedPlan?.max_monthly_appointments || editingCompany.max_monthly_appointments,
         metadata: {
           ...(editingCompany?.metadata || {}),
           primary_color: companyForm.primary_color,
@@ -197,8 +332,32 @@ export default function SuperAdmin() {
     }
   };
 
+  const handleToggleCompanyStatus = async (companyId: string, currentStatus: string) => {
+    try {
+      const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
+      
+      const { error } = await supabase
+        .from("companies")
+        .update({ plan_status: newStatus })
+        .eq("id", companyId);
+
+      if (error) throw error;
+
+      toast({ 
+        title: newStatus === 'active' ? "✅ Empresa activada" : "⚠️ Empresa suspendida" 
+      });
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error al cambiar estado",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleDeleteCompany = async (id: string) => {
-    if (!confirm("¿Estás seguro de eliminar esta empresa?")) return;
+    if (!confirm("¿Estás seguro de eliminar esta empresa? Esto eliminará todos sus datos.")) return;
 
     try {
       const { error } = await supabase
@@ -221,7 +380,6 @@ export default function SuperAdmin() {
 
   const handleCreateUser = async () => {
     try {
-      // Helper for generating UUID if not available
       const newId = typeof crypto !== 'undefined' && crypto.randomUUID 
         ? crypto.randomUUID() 
         : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { 
@@ -229,20 +387,22 @@ export default function SuperAdmin() {
             return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); 
           });
 
-      // Crear usuario
+      const password = userForm.password || generatePassword();
+
       const { data: userData, error: userError } = await supabase
         .from("users")
         .insert([{
           id: newId,
           email: userForm.email,
           full_name: userForm.full_name,
+          is_active: true,
+          created_by: session?.userId,
         }])
         .select()
         .single();
 
       if (userError) throw userError;
 
-      // Si tiene empresa, crear relación
       if (userForm.company_id && userForm.role !== "patient") {
         const { error: relationError } = await supabase
           .from("company_users")
@@ -255,11 +415,22 @@ export default function SuperAdmin() {
         if (relationError) throw relationError;
       }
 
+      const company = companies.find(c => c.id === userForm.company_id);
+
+      setGeneratedCredentials({
+        email: userForm.email,
+        password: password,
+        companyName: company?.name,
+        companySlug: company?.slug,
+      });
+
       toast({ title: "✅ Usuario creado exitosamente" });
       setUserDialogOpen(false);
+      setCredentialsDialogOpen(true);
       setUserForm({
         email: "",
         full_name: "",
+        password: "",
         role: "patient",
         company_id: "",
       });
@@ -273,6 +444,38 @@ export default function SuperAdmin() {
     }
   };
 
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: `✅ ${label} copiado al portapapeles` });
+  };
+
+  const getPlanBadge = (planId: string) => {
+    const badges = {
+      free: { icon: Crown, color: "bg-gray-500", label: "Gratuito" },
+      pro: { icon: Zap, color: "bg-blue-500", label: "Pro" },
+      enterprise: { icon: Rocket, color: "bg-purple-500", label: "Enterprise" }
+    };
+    const badge = badges[planId as keyof typeof badges] || badges.free;
+    const Icon = badge.icon;
+    return (
+      <Badge className={`${badge.color} text-white border-0`}>
+        <Icon className="w-3 h-3 mr-1" />
+        {badge.label}
+      </Badge>
+    );
+  };
+
+  const getStatusBadge = (status: string) => {
+    const badges = {
+      trial: { color: "bg-yellow-500", label: "Prueba" },
+      active: { color: "bg-green-500", label: "Activo" },
+      suspended: { color: "bg-red-500", label: "Suspendido" },
+      cancelled: { color: "bg-gray-500", label: "Cancelado" }
+    };
+    const badge = badges[status as keyof typeof badges] || badges.trial;
+    return <Badge className={`${badge.color} text-white border-0`}>{badge.label}</Badge>;
+  };
+
   if (!mounted || loading || !session) {
     return null;
   }
@@ -282,6 +485,101 @@ export default function SuperAdmin() {
   return (
     <SuperAdminLayout activeTab={activeTabId}>
       <SEO title="Panel SuperAdmin - PodoAgenda Pro" />
+
+      {/* Credentials Dialog */}
+      <Dialog open={credentialsDialogOpen} onOpenChange={setCredentialsDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Check className="w-6 h-6 text-green-500" />
+              ¡Credenciales Generadas!
+            </DialogTitle>
+            <DialogDescription>
+              Guarda estas credenciales. No se mostrarán nuevamente.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl">
+            {generatedCredentials?.companyName && (
+              <div>
+                <Label className="text-sm font-semibold text-gray-700">Empresa</Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <Input value={generatedCredentials.companyName} readOnly className="bg-white" />
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => copyToClipboard(generatedCredentials.companyName || "", "Nombre de empresa")}
+                  >
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {generatedCredentials?.companySlug && (
+              <div>
+                <Label className="text-sm font-semibold text-gray-700">URL de la Empresa</Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <Input value={`https://podoagenda.com/${generatedCredentials.companySlug}`} readOnly className="bg-white" />
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => copyToClipboard(`https://podoagenda.com/${generatedCredentials.companySlug}`, "URL")}
+                  >
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <Label className="text-sm font-semibold text-gray-700">Email</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <Input value={generatedCredentials?.email || ""} readOnly className="bg-white" />
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => copyToClipboard(generatedCredentials?.email || "", "Email")}
+                >
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-sm font-semibold text-gray-700">Contraseña</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <Input 
+                  value={generatedCredentials?.password || ""} 
+                  type={showPassword ? "text" : "password"}
+                  readOnly 
+                  className="bg-white font-mono"
+                />
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => copyToClipboard(generatedCredentials?.password || "", "Contraseña")}
+                >
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button onClick={() => setCredentialsDialogOpen(false)} className="w-full">
+              Entendido, he guardado las credenciales
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dashboard Tab */}
       {activeTabId === "dashboard" && (
@@ -315,7 +613,7 @@ export default function SuperAdmin() {
               <p className="text-4xl font-bold">{stats.totalUsers}</p>
               <div className="flex items-center gap-2 mt-3 text-sm opacity-80">
                 <TrendingUp className="w-4 h-4" />
-                <span>+12 este mes</span>
+                <span>Sistema global</span>
               </div>
             </Card>
 
@@ -324,36 +622,39 @@ export default function SuperAdmin() {
                 <DollarSign className="w-8 h-8 opacity-80" />
                 <Badge className="bg-white/20 text-white border-0">Mensual</Badge>
               </div>
-              <p className="text-sm opacity-80 mb-1">Ingresos</p>
+              <p className="text-sm opacity-80 mb-1">Ingresos MRR</p>
               <p className="text-4xl font-bold">${stats.monthlyRevenue}</p>
               <div className="flex items-center gap-2 mt-3 text-sm opacity-80">
                 <TrendingUp className="w-4 h-4" />
-                <span>+8% vs mes anterior</span>
+                <span>Recurrente</span>
               </div>
             </Card>
 
             <Card className="p-6 bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-xl">
               <div className="flex items-center justify-between mb-4">
                 <Activity className="w-8 h-8 opacity-80" />
-                <Badge className="bg-white/20 text-white border-0">Hoy</Badge>
+                <Badge className="bg-white/20 text-white border-0">Estado</Badge>
               </div>
-              <p className="text-sm opacity-80 mb-1">Actividad</p>
+              <p className="text-sm opacity-80 mb-1">Sistema</p>
               <p className="text-4xl font-bold">98%</p>
               <div className="flex items-center gap-2 mt-3 text-sm opacity-80">
-                <TrendingUp className="w-4 h-4" />
-                <span>Sistema estable</span>
+                <Check className="w-4 h-4" />
+                <span>Operativo</span>
               </div>
             </Card>
           </div>
 
           {/* Recent Activity */}
           <Card className="p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Actividad Reciente</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Empresas Recientes</h2>
             <div className="space-y-4">
               {companies.slice(0, 5).map((company) => (
                 <div key={company.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-bold text-lg">
+                    <div 
+                      className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg"
+                      style={{ background: `linear-gradient(135deg, ${(company.metadata as any)?.primary_color || '#2563EB'}, ${(company.metadata as any)?.secondary_color || '#8B5CF6'})` }}
+                    >
                       {company.name.charAt(0)}
                     </div>
                     <div>
@@ -361,9 +662,10 @@ export default function SuperAdmin() {
                       <p className="text-sm text-gray-600">{company.email}</p>
                     </div>
                   </div>
-                  <Badge variant={company.is_active ? "default" : "secondary"}>
-                    {company.is_active ? "Activa" : "Inactiva"}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    {getPlanBadge(company.plan)}
+                    {getStatusBadge(company.plan_status)}
+                  </div>
                 </div>
               ))}
             </div>
@@ -386,44 +688,66 @@ export default function SuperAdmin() {
                   Nueva Empresa
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
+              <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingCompany ? "Editar Empresa" : "Nueva Empresa"}</DialogTitle>
                   <DialogDescription>
-                    Complete los datos de la empresa
+                    Complete todos los datos de la empresa y su administrador
                   </DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="name">Nombre</Label>
-                      <Input
-                        id="name"
-                        value={companyForm.name}
-                        onChange={(e) => setCompanyForm({ ...companyForm, name: e.target.value })}
-                        placeholder="Clínica Podológica"
-                      />
+                <div className="grid gap-6 py-4">
+                  {/* Datos de la Empresa */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      <Building2 className="w-5 h-5 text-blue-600" />
+                      Datos de la Empresa
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="name">Nombre *</Label>
+                        <Input
+                          id="name"
+                          value={companyForm.name}
+                          onChange={(e) => {
+                            setCompanyForm({ ...companyForm, name: e.target.value });
+                            if (!editingCompany) {
+                              setCompanyForm({ ...companyForm, name: e.target.value, slug: generateSlug(e.target.value) });
+                            }
+                          }}
+                          placeholder="Clínica Podológica"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="slug">URL/Slug *</Label>
+                        <Input
+                          id="slug"
+                          value={companyForm.slug}
+                          onChange={(e) => setCompanyForm({ ...companyForm, slug: e.target.value })}
+                          placeholder="clinica-podologica"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">podoagenda.com/{companyForm.slug || "slug"}</p>
+                      </div>
                     </div>
-                    <div>
-                      <Label htmlFor="email">Email</Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        value={companyForm.email}
-                        onChange={(e) => setCompanyForm({ ...companyForm, email: e.target.value })}
-                        placeholder="contacto@clinica.com"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="phone">Teléfono</Label>
-                      <Input
-                        id="phone"
-                        value={companyForm.phone}
-                        onChange={(e) => setCompanyForm({ ...companyForm, phone: e.target.value })}
-                        placeholder="+56 9 1234 5678"
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="email">Email *</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={companyForm.email}
+                          onChange={(e) => setCompanyForm({ ...companyForm, email: e.target.value })}
+                          placeholder="contacto@clinica.com"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="phone">Teléfono</Label>
+                        <Input
+                          id="phone"
+                          value={companyForm.phone}
+                          onChange={(e) => setCompanyForm({ ...companyForm, phone: e.target.value })}
+                          placeholder="+56 9 1234 5678"
+                        />
+                      </div>
                     </div>
                     <div>
                       <Label htmlFor="address">Dirección</Label>
@@ -434,52 +758,117 @@ export default function SuperAdmin() {
                         placeholder="Av. Principal 123"
                       />
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="primary_color">Color Primario</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          id="primary_color"
-                          type="color"
-                          value={companyForm.primary_color}
-                          onChange={(e) => setCompanyForm({ ...companyForm, primary_color: e.target.value })}
-                          className="w-16 h-10"
-                        />
-                        <Input
-                          value={companyForm.primary_color}
-                          onChange={(e) => setCompanyForm({ ...companyForm, primary_color: e.target.value })}
-                          placeholder="#2563EB"
-                        />
+                      <Label htmlFor="plan">Plan *</Label>
+                      <Select value={companyForm.plan} onValueChange={(value: any) => setCompanyForm({ ...companyForm, plan: value })}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {plans.map((plan) => (
+                            <SelectItem key={plan.id} value={plan.id}>
+                              {plan.name} - ${plan.price_monthly}/mes
+                              {plan.max_users > 0 && ` (Hasta ${plan.max_users} usuarios, ${plan.max_podiatrists} podólogos)`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Personalización */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      <Palette className="w-5 h-5 text-purple-600" />
+                      Personalización
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="primary_color">Color Primario</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="primary_color"
+                            type="color"
+                            value={companyForm.primary_color}
+                            onChange={(e) => setCompanyForm({ ...companyForm, primary_color: e.target.value })}
+                            className="w-16 h-10"
+                          />
+                          <Input
+                            value={companyForm.primary_color}
+                            onChange={(e) => setCompanyForm({ ...companyForm, primary_color: e.target.value })}
+                            placeholder="#2563EB"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="secondary_color">Color Secundario</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="secondary_color"
+                            type="color"
+                            value={companyForm.secondary_color}
+                            onChange={(e) => setCompanyForm({ ...companyForm, secondary_color: e.target.value })}
+                            className="w-16 h-10"
+                          />
+                          <Input
+                            value={companyForm.secondary_color}
+                            onChange={(e) => setCompanyForm({ ...companyForm, secondary_color: e.target.value })}
+                            placeholder="#8B5CF6"
+                          />
+                        </div>
                       </div>
                     </div>
                     <div>
-                      <Label htmlFor="secondary_color">Color Secundario</Label>
-                      <div className="flex gap-2">
+                      <Label htmlFor="logo_url">Logo URL (opcional)</Label>
+                      <Input
+                        id="logo_url"
+                        value={companyForm.logo_url}
+                        onChange={(e) => setCompanyForm({ ...companyForm, logo_url: e.target.value })}
+                        placeholder="https://..."
+                      />
+                    </div>
+                  </div>
+
+                  {/* Administrador (solo al crear) */}
+                  {!editingCompany && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold flex items-center gap-2">
+                        <Users className="w-5 h-5 text-green-600" />
+                        Administrador de la Empresa
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="admin_name">Nombre Completo *</Label>
+                          <Input
+                            id="admin_name"
+                            value={companyForm.admin_name}
+                            onChange={(e) => setCompanyForm({ ...companyForm, admin_name: e.target.value })}
+                            placeholder="Juan Pérez"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="admin_email">Email *</Label>
+                          <Input
+                            id="admin_email"
+                            type="email"
+                            value={companyForm.admin_email}
+                            onChange={(e) => setCompanyForm({ ...companyForm, admin_email: e.target.value })}
+                            placeholder="admin@clinica.com"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="admin_password">Contraseña (dejar vacío para generar automática)</Label>
                         <Input
-                          id="secondary_color"
-                          type="color"
-                          value={companyForm.secondary_color}
-                          onChange={(e) => setCompanyForm({ ...companyForm, secondary_color: e.target.value })}
-                          className="w-16 h-10"
-                        />
-                        <Input
-                          value={companyForm.secondary_color}
-                          onChange={(e) => setCompanyForm({ ...companyForm, secondary_color: e.target.value })}
-                          placeholder="#8B5CF6"
+                          id="admin_password"
+                          type="text"
+                          value={companyForm.admin_password}
+                          onChange={(e) => setCompanyForm({ ...companyForm, admin_password: e.target.value })}
+                          placeholder="Se generará automáticamente"
                         />
                       </div>
                     </div>
-                  </div>
-                  <div>
-                    <Label htmlFor="logo_url">Logo URL (opcional)</Label>
-                    <Input
-                      id="logo_url"
-                      value={companyForm.logo_url}
-                      onChange={(e) => setCompanyForm({ ...companyForm, logo_url: e.target.value })}
-                      placeholder="https://..."
-                    />
-                  </div>
+                  )}
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => {
@@ -501,9 +890,10 @@ export default function SuperAdmin() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Empresa</TableHead>
-                  <TableHead>Contacto</TableHead>
-                  <TableHead>Colores</TableHead>
+                  <TableHead>Plan</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead>Límites</TableHead>
+                  <TableHead>URL</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -513,31 +903,49 @@ export default function SuperAdmin() {
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div 
-                          className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold"
+                          className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold shadow-lg"
                           style={{ background: `linear-gradient(135deg, ${(company.metadata as any)?.primary_color || '#2563EB'}, ${(company.metadata as any)?.secondary_color || '#8B5CF6'})` }}
                         >
                           {company.name.charAt(0)}
                         </div>
                         <div>
                           <p className="font-semibold">{company.name}</p>
-                          <p className="text-sm text-gray-600">{company.address}</p>
+                          <p className="text-sm text-gray-600">{company.email}</p>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <p className="text-sm">{company.email}</p>
-                      <p className="text-sm text-gray-600">{company.phone}</p>
+                      {getPlanBadge(company.plan)}
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-2">
-                        <div className="w-8 h-8 rounded-lg border-2 border-gray-200" style={{ backgroundColor: (company.metadata as any)?.primary_color || '#2563EB' }} />
-                        <div className="w-8 h-8 rounded-lg border-2 border-gray-200" style={{ backgroundColor: (company.metadata as any)?.secondary_color || '#8B5CF6' }} />
+                      <div className="space-y-1">
+                        {getStatusBadge(company.plan_status)}
+                        {company.plan_status === 'trial' && (
+                          <div className="flex items-center gap-1 text-xs text-gray-600">
+                            <Clock className="w-3 h-3" />
+                            <span>Termina en {Math.ceil((new Date(company.trial_ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} días</span>
+                          </div>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={company.is_active ? "default" : "secondary"}>
-                        {company.is_active ? "Activa" : "Inactiva"}
-                      </Badge>
+                      <div className="text-xs space-y-1">
+                        <div>👥 {company.max_users > 0 ? `${company.max_users} usuarios` : '∞'}</div>
+                        <div>👨‍⚕️ {company.max_podiatrists > 0 ? `${company.max_podiatrists} podólogos` : '∞'}</div>
+                        <div>📅 {company.max_monthly_appointments > 0 ? `${company.max_monthly_appointments} citas/mes` : '∞'}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <code className="text-xs bg-gray-100 px-2 py-1 rounded">/{company.slug}</code>
+                        <Button 
+                          size="sm" 
+                          variant="ghost"
+                          onClick={() => copyToClipboard(`https://podoagenda.com/${company.slug}`, "URL")}
+                        >
+                          <Copy className="w-3 h-3" />
+                        </Button>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -548,17 +956,30 @@ export default function SuperAdmin() {
                             setEditingCompany(company);
                             setCompanyForm({
                               name: company.name || "",
+                              slug: company.slug || "",
                               email: company.email || "",
                               phone: company.phone || "",
                               address: company.address || "",
                               logo_url: company.logo_url || "",
                               primary_color: (company.metadata as any)?.primary_color || "#2563EB",
                               secondary_color: (company.metadata as any)?.secondary_color || "#8B5CF6",
+                              plan: company.plan || "free",
+                              admin_email: "",
+                              admin_name: "",
+                              admin_password: "",
                             });
                             setCompanyDialogOpen(true);
                           }}
                         >
                           <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className={company.plan_status === 'active' ? 'text-orange-600' : 'text-green-600'}
+                          onClick={() => handleToggleCompanyStatus(company.id, company.plan_status)}
+                        >
+                          {company.plan_status === 'active' ? <AlertCircle className="w-4 h-4" /> : <Check className="w-4 h-4" />}
                         </Button>
                         <Button
                           size="sm"
@@ -602,7 +1023,7 @@ export default function SuperAdmin() {
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div>
-                    <Label htmlFor="user_email">Email</Label>
+                    <Label htmlFor="user_email">Email *</Label>
                     <Input
                       id="user_email"
                       type="email"
@@ -612,7 +1033,7 @@ export default function SuperAdmin() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="user_name">Nombre Completo</Label>
+                    <Label htmlFor="user_name">Nombre Completo *</Label>
                     <Input
                       id="user_name"
                       value={userForm.full_name}
@@ -621,7 +1042,17 @@ export default function SuperAdmin() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="user_role">Rol</Label>
+                    <Label htmlFor="user_password">Contraseña (dejar vacío para generar automática)</Label>
+                    <Input
+                      id="user_password"
+                      type="text"
+                      value={userForm.password}
+                      onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                      placeholder="Se generará automáticamente"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="user_role">Rol *</Label>
                     <Select value={userForm.role} onValueChange={(value: any) => setUserForm({ ...userForm, role: value })}>
                       <SelectTrigger>
                         <SelectValue />
@@ -635,7 +1066,7 @@ export default function SuperAdmin() {
                   </div>
                   {userForm.role !== "patient" && (
                     <div>
-                      <Label htmlFor="user_company">Empresa</Label>
+                      <Label htmlFor="user_company">Empresa *</Label>
                       <Select value={userForm.company_id} onValueChange={(value) => setUserForm({ ...userForm, company_id: value })}>
                         <SelectTrigger>
                           <SelectValue placeholder="Seleccionar empresa" />
@@ -695,8 +1126,8 @@ export default function SuperAdmin() {
                       {user.company_users?.[0]?.company?.name || "-"}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="default" className="bg-green-500">
-                        Activo
+                      <Badge variant={user.is_active ? "default" : "secondary"} className={user.is_active ? "bg-green-500" : "bg-gray-500"}>
+                        {user.is_active ? "Activo" : "Inactivo"}
                       </Badge>
                     </TableCell>
                   </TableRow>
@@ -724,7 +1155,7 @@ export default function SuperAdmin() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {companies.map((company) => (
                 <Card key={company.id} className="p-6 border-2">
                   <div className="flex items-center gap-4 mb-4">
@@ -736,7 +1167,7 @@ export default function SuperAdmin() {
                     </div>
                     <div>
                       <h4 className="font-semibold text-lg">{company.name}</h4>
-                      <p className="text-sm text-gray-600">Identidad personalizada</p>
+                      <p className="text-sm text-gray-600">{company.slug}</p>
                     </div>
                   </div>
 
@@ -764,12 +1195,17 @@ export default function SuperAdmin() {
                       setEditingCompany(company);
                       setCompanyForm({
                         name: company.name || "",
+                        slug: company.slug || "",
                         email: company.email || "",
                         phone: company.phone || "",
                         address: company.address || "",
                         logo_url: company.logo_url || "",
                         primary_color: (company.metadata as any)?.primary_color || "#2563EB",
                         secondary_color: (company.metadata as any)?.secondary_color || "#8B5CF6",
+                        plan: company.plan || "free",
+                        admin_email: "",
+                        admin_name: "",
+                        admin_password: "",
                       });
                       setCompanyDialogOpen(true);
                     }}
@@ -796,47 +1232,60 @@ export default function SuperAdmin() {
             <div className="flex items-center gap-4 mb-6">
               <SettingsIcon className="w-8 h-8 text-blue-600" />
               <div>
-                <h3 className="text-lg font-semibold">Configuración del Sistema</h3>
-                <p className="text-sm text-gray-600">Parámetros generales y configuraciones globales</p>
+                <h3 className="text-lg font-semibold">Información del Sistema</h3>
+                <p className="text-sm text-gray-600">Versión y configuraciones globales</p>
               </div>
             </div>
 
             <div className="space-y-6">
               <div>
-                <h4 className="font-semibold mb-4">Información del Sistema</h4>
+                <h4 className="font-semibold mb-4">Detalles del Sistema</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 bg-gray-50 rounded-xl">
                     <p className="text-sm text-gray-600 mb-1">Versión</p>
                     <p className="text-lg font-semibold">PodoAgenda Pro v1.0</p>
                   </div>
                   <div className="p-4 bg-gray-50 rounded-xl">
-                    <p className="text-sm text-gray-600 mb-1">Última actualización</p>
-                    <p className="text-lg font-semibold">Hoy</p>
+                    <p className="text-sm text-gray-600 mb-1">Base de Datos</p>
+                    <p className="text-lg font-semibold">PostgreSQL (Supabase)</p>
+                  </div>
+                  <div className="p-4 bg-gray-50 rounded-xl">
+                    <p className="text-sm text-gray-600 mb-1">Empresas Totales</p>
+                    <p className="text-lg font-semibold">{stats.totalCompanies}</p>
+                  </div>
+                  <div className="p-4 bg-gray-50 rounded-xl">
+                    <p className="text-sm text-gray-600 mb-1">Usuarios Totales</p>
+                    <p className="text-lg font-semibold">{stats.totalUsers}</p>
                   </div>
                 </div>
               </div>
 
               <div>
-                <h4 className="font-semibold mb-4">Configuración de Notificaciones</h4>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                    <div>
-                      <p className="font-medium">Notificaciones de Email</p>
-                      <p className="text-sm text-gray-600">Enviar alertas por correo</p>
-                    </div>
-                    <Badge variant="default" className="bg-green-500">
-                      <Check className="w-4 h-4" />
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                    <div>
-                      <p className="font-medium">Recordatorios de Citas</p>
-                      <p className="text-sm text-gray-600">Enviar 24h antes</p>
-                    </div>
-                    <Badge variant="default" className="bg-green-500">
-                      <Check className="w-4 h-4" />
-                    </Badge>
-                  </div>
+                <h4 className="font-semibold mb-4">Planes Disponibles</h4>
+                <div className="grid grid-cols-3 gap-4">
+                  {plans.map((plan) => (
+                    <Card key={plan.id} className="p-6 border-2">
+                      <div className="text-center mb-4">
+                        {getPlanBadge(plan.id)}
+                        <p className="text-3xl font-bold mt-2">${plan.price_monthly}</p>
+                        <p className="text-sm text-gray-600">por mes</p>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <Check className="w-4 h-4 text-green-500" />
+                          <span>{plan.max_users > 0 ? `${plan.max_users} usuarios` : 'Usuarios ilimitados'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Check className="w-4 h-4 text-green-500" />
+                          <span>{plan.max_podiatrists > 0 ? `${plan.max_podiatrists} podólogos` : 'Podólogos ilimitados'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Check className="w-4 h-4 text-green-500" />
+                          <span>{plan.max_monthly_appointments > 0 ? `${plan.max_monthly_appointments} citas/mes` : 'Citas ilimitadas'}</span>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
                 </div>
               </div>
             </div>
