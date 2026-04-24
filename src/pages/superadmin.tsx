@@ -178,38 +178,67 @@ export default function SuperAdmin() {
 
   const loadData = async () => {
     try {
+      console.log("🔄 Cargando datos del SuperAdmin...");
+      
       // Cargar empresas
-      const { data: companiesData } = await supabase
+      const { data: companiesData, error: companiesError } = await supabase
         .from("companies")
         .select("*")
         .order("created_at", { ascending: false });
       
+      if (companiesError) {
+        console.error("❌ Error cargando empresas:", companiesError);
+      } else {
+        console.log("✅ Empresas cargadas:", companiesData?.length || 0, companiesData);
+      }
+      
       setCompanies(companiesData || []);
 
-      // Cargar usuarios CON sus roles y empresas
-      const { data: usersData } = await supabase
+      // Cargar TODOS los usuarios primero
+      const { data: allUsers, error: usersError } = await supabase
         .from("users")
-        .select(`
-          *,
-          company_users (
-            role,
-            status,
-            company_id,
-            companies (
-              id,
-              name,
-              slug
-            )
-          )
-        `)
+        .select("*")
         .order("created_at", { ascending: false });
       
-      console.log("👥 Usuarios cargados con roles:", usersData);
+      if (usersError) {
+        console.error("❌ Error cargando usuarios:", usersError);
+        setUsers([]);
+        return;
+      }
+
+      console.log("✅ Usuarios encontrados en BD:", allUsers?.length || 0, allUsers);
+
+      // Cargar todas las relaciones company_users
+      const { data: companyUsersData, error: cuError } = await supabase
+        .from("company_users")
+        .select(`
+          user_id,
+          company_id,
+          role,
+          status,
+          companies (
+            id,
+            name,
+            slug
+          )
+        `);
       
-      // Transformar datos para la tabla
-      const transformedUsers = (usersData || []).map((user: any) => {
+      if (cuError) {
+        console.error("❌ Error cargando company_users:", cuError);
+      } else {
+        console.log("✅ Company_users encontrados:", companyUsersData?.length || 0, companyUsersData);
+      }
+
+      // Combinar usuarios con sus roles
+      const transformedUsers = (allUsers || []).map((user: any) => {
+        console.log(`📝 Procesando usuario: ${user.email}`, {
+          is_superadmin: user.is_superadmin,
+          id: user.id
+        });
+
         // Si es superadmin
         if (user.is_superadmin) {
+          console.log(`  ✅ Es SuperAdmin`);
           return {
             ...user,
             role: "superadmin",
@@ -219,9 +248,17 @@ export default function SuperAdmin() {
           };
         }
         
-        // Si tiene company_users (puede tener múltiples)
-        if (user.company_users && user.company_users.length > 0) {
-          const firstCompany = user.company_users[0];
+        // Buscar en company_users
+        const userCompanies = (companyUsersData || []).filter((cu: any) => cu.user_id === user.id);
+        
+        if (userCompanies && userCompanies.length > 0) {
+          const firstCompany = userCompanies[0];
+          console.log(`  ✅ Encontrado en company_users:`, {
+            role: firstCompany.role,
+            company: firstCompany.companies?.name,
+            status: firstCompany.status
+          });
+          
           return {
             ...user,
             role: firstCompany.role,
@@ -232,6 +269,7 @@ export default function SuperAdmin() {
         }
         
         // Usuario sin empresa asignada
+        console.log(`  ⚠️ No encontrado en company_users - Sin asignar`);
         return {
           ...user,
           role: "sin_asignar",
@@ -241,6 +279,7 @@ export default function SuperAdmin() {
         };
       });
       
+      console.log("✅ Usuarios transformados:", transformedUsers.length, transformedUsers);
       setUsers(transformedUsers);
 
       // Cargar planes
@@ -315,8 +354,13 @@ export default function SuperAdmin() {
           return sum + (Number(plan?.price_monthly) || 0);
         }, 0) || 0,
       });
+
+      console.log("✅ LoadData completado. Stats:", {
+        empresas: companiesData?.length || 0,
+        usuarios: transformedUsers?.length || 0
+      });
     } catch (error) {
-      console.error("Error loading data:", error);
+      console.error("💥 Error en loadData:", error);
     }
   };
 
@@ -374,6 +418,12 @@ export default function SuperAdmin() {
 
   const handleCreateCompany = async () => {
     try {
+      console.log("🏢 Creando nueva empresa...", {
+        name: companyForm.name,
+        admin_email: companyForm.admin_email,
+        role_to_assign: "owner"
+      });
+
       const slug = companyForm.slug || generateSlug(companyForm.name);
       const adminPassword = companyForm.admin_password || generatePassword();
 
@@ -424,13 +474,20 @@ export default function SuperAdmin() {
         }
       };
 
+      console.log("📝 Insertando empresa en BD...", companyData);
+
       const { data: company, error: companyError } = await supabase
         .from("companies")
         .insert([companyData])
         .select()
         .single();
 
-      if (companyError) throw companyError;
+      if (companyError) {
+        console.error("❌ Error creando empresa:", companyError);
+        throw companyError;
+      }
+
+      console.log("✅ Empresa creada:", company);
 
       const userId = typeof crypto !== 'undefined' && crypto.randomUUID 
         ? crypto.randomUUID() 
@@ -439,6 +496,8 @@ export default function SuperAdmin() {
             return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); 
           });
 
+      console.log("👤 Creando usuario owner con ID:", userId);
+
       const { data: adminUser, error: userError } = await supabase
         .from("users")
         .insert([{
@@ -446,22 +505,47 @@ export default function SuperAdmin() {
           email: companyForm.admin_email,
           full_name: companyForm.admin_name,
           is_active: true,
+          is_superadmin: false,
           created_by: session?.userId,
         }])
         .select()
         .single();
 
-      if (userError) throw userError;
+      if (userError) {
+        console.error("❌ Error creando usuario:", userError);
+        // Rollback: eliminar empresa creada
+        await supabase.from("companies").delete().eq("id", company.id);
+        throw userError;
+      }
 
-      const { error: relationError } = await supabase
+      console.log("✅ Usuario creado:", adminUser);
+      console.log("🔗 Insertando relación en company_users...", {
+        user_id: adminUser.id,
+        company_id: company.id,
+        role: "owner",
+        status: "active"
+      });
+
+      const { data: companyUserRelation, error: relationError } = await supabase
         .from("company_users")
         .insert([{
           user_id: adminUser.id,
           company_id: company.id,
           role: 'owner',
-        }]);
+          status: 'active'
+        }])
+        .select()
+        .single();
 
-      if (relationError) throw relationError;
+      if (relationError) {
+        console.error("❌ Error creando relación company_users:", relationError);
+        // Rollback: eliminar usuario y empresa
+        await supabase.from("users").delete().eq("id", adminUser.id);
+        await supabase.from("companies").delete().eq("id", company.id);
+        throw relationError;
+      }
+
+      console.log("✅ Relación company_users creada:", companyUserRelation);
 
       setGeneratedCredentials({
         email: companyForm.admin_email,
@@ -474,8 +558,12 @@ export default function SuperAdmin() {
       setCompanyDialogOpen(false);
       setCredentialsDialogOpen(true);
       resetCompanyForm();
-      loadData();
+      
+      console.log("🔄 Recargando datos...");
+      await loadData();
+      console.log("✅ Proceso completado");
     } catch (error: any) {
+      console.error("💥 Error en handleCreateCompany:", error);
       toast({
         title: "Error al crear empresa",
         description: error.message,
@@ -622,9 +710,19 @@ export default function SuperAdmin() {
   const handleCreateUser = async () => {
     try {
       if (!userForm.email || !userForm.full_name) {
-        alert("Email y nombre son requeridos");
+        toast({
+          title: "Campos requeridos",
+          description: "Email y nombre son obligatorios",
+          variant: "destructive",
+        });
         return;
       }
+
+      console.log("👤 Creando nuevo usuario...", {
+        email: userForm.email,
+        role: userForm.role,
+        company_id: userForm.company_id
+      });
 
       // Generar password si no se proporcionó
       const finalPassword = userForm.password || generatePassword();
@@ -637,6 +735,8 @@ export default function SuperAdmin() {
             return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); 
           });
 
+      console.log("📝 Insertando en users con ID:", userId);
+
       // 1. Insertar en users
       const { error: userError } = await supabase.from("users").insert([{
         id: userId,
@@ -648,13 +748,38 @@ export default function SuperAdmin() {
       }]);
 
       if (userError) {
-        console.error("Error creando usuario:", userError);
-        alert("Error al crear usuario: " + userError.message);
+        console.error("❌ Error creando usuario:", userError);
+        toast({
+          title: "Error al crear usuario",
+          description: userError.message,
+          variant: "destructive",
+        });
         return;
       }
 
+      console.log("✅ Usuario creado en tabla users");
+
       // 2. Si NO es superadmin, insertar en company_users
-      if (userForm.role !== "superadmin" && userForm.company_id) {
+      if (userForm.role !== "superadmin") {
+        if (!userForm.company_id) {
+          console.error("❌ Falta company_id para rol:", userForm.role);
+          toast({
+            title: "Error",
+            description: "Debe seleccionar una empresa para este rol",
+            variant: "destructive",
+          });
+          // Rollback
+          await supabase.from("users").delete().eq("id", userId);
+          return;
+        }
+
+        console.log("🔗 Insertando en company_users...", {
+          user_id: userId,
+          company_id: userForm.company_id,
+          role: userForm.role,
+          status: "active"
+        });
+
         const { error: companyUserError } = await supabase.from("company_users").insert([{
           user_id: userId,
           company_id: userForm.company_id,
@@ -663,12 +788,20 @@ export default function SuperAdmin() {
         }]);
 
         if (companyUserError) {
-          console.error("Error asignando usuario a empresa:", companyUserError);
-          // Eliminar usuario creado si falla la asignación
+          console.error("❌ Error asignando usuario a empresa:", companyUserError);
+          // Rollback: eliminar usuario creado
           await supabase.from("users").delete().eq("id", userId);
-          alert("Error al asignar usuario a empresa: " + companyUserError.message);
+          toast({
+            title: "Error al asignar empresa",
+            description: companyUserError.message,
+            variant: "destructive",
+          });
           return;
         }
+
+        console.log("✅ Relación company_users creada");
+      } else {
+        console.log("ℹ️ SuperAdmin - NO se crea en company_users (correcto)");
       }
 
       // 3. Mostrar credenciales generadas
@@ -683,12 +816,19 @@ export default function SuperAdmin() {
       // 4. Limpiar form y recargar
       setUserDialogOpen(false);
       setUserForm({ email: "", full_name: "", phone: "", password: "", role: "employee", company_id: "" });
-      loadData();
-
-      alert("✅ Usuario creado exitosamente");
+      
+      console.log("🔄 Recargando datos...");
+      await loadData();
+      
+      toast({ title: "✅ Usuario creado exitosamente" });
+      console.log("✅ Proceso completado");
     } catch (error: any) {
-      console.error("Error en handleCreateUser:", error);
-      alert("Error: " + error.message);
+      console.error("💥 Error en handleCreateUser:", error);
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
