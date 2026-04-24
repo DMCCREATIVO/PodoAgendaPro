@@ -231,17 +231,9 @@ export default function SuperAdmin() {
       if (companyError) throw companyError;
 
       // Crear usuario admin de la empresa
-      const userId = typeof crypto !== 'undefined' && crypto.randomUUID 
-        ? crypto.randomUUID() 
-        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { 
-            const r = Math.random() * 16 | 0; 
-            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); 
-          });
-
       const { data: adminUser, error: userError } = await supabase
         .from("users")
         .insert([{
-          id: userId,
           email: companyForm.admin_email,
           full_name: companyForm.admin_name,
           is_active: true,
@@ -388,19 +380,11 @@ export default function SuperAdmin() {
 
   const handleCreateUser = async () => {
     try {
-      const newId = typeof crypto !== 'undefined' && crypto.randomUUID 
-        ? crypto.randomUUID() 
-        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { 
-            const r = Math.random() * 16 | 0; 
-            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); 
-          });
-
       const password = userForm.password || generatePassword();
 
       const { data: userData, error: userError } = await supabase
         .from("users")
         .insert([{
-          id: newId,
           email: userForm.email,
           full_name: userForm.full_name,
           is_active: true,
