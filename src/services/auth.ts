@@ -44,7 +44,7 @@ export const authService = {
         userId: user.id,
         email: user.email,
         fullName: user.full_name || email,
-        role: user.role || (user.is_superadmin ? "superadmin" : "patient"),
+        role: (user.role as Session["role"]) || (user.is_superadmin ? "superadmin" : "patient"),
         companyId: user.company_id || undefined,
         isSuperadmin: user.is_superadmin || false,
       };

@@ -23,7 +23,7 @@ export default function Login() {
     
     // Verificar si ya está autenticado SOLO una vez al montar
     const checkAuth = () => {
-      if (authService.isAuthenticated()) {
+      if (authService.getSession()) {
         const dashboardRoute = authService.getDashboardRoute();
         console.log("✅ Usuario ya autenticado, redirigiendo a:", dashboardRoute);
         router.replace(dashboardRoute); // Usar replace en vez de push para evitar volver atrás
