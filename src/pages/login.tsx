@@ -12,28 +12,31 @@ import { Lock, Mail, Shield, UserCog, Stethoscope, User } from "lucide-react";
 export default function Login() {
   const router = useRouter();
   const { toast } = useToast();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<"superadmin" | "staff" | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<string | null>(null);
-
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
 
   useEffect(() => {
     setMounted(true);
-    // Redirect if already logged in
-    const session = authService.getSession();
-    if (session) {
-      router.replace(authService.getDashboardRoute());
-    }
-  }, [router]);
+    
+    // Verificar si ya está autenticado SOLO una vez al montar
+    const checkAuth = () => {
+      if (authService.isAuthenticated()) {
+        const dashboardRoute = authService.getDashboardRoute();
+        console.log("✅ Usuario ya autenticado, redirigiendo a:", dashboardRoute);
+        router.replace(dashboardRoute); // Usar replace en vez de push para evitar volver atrás
+      }
+    };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+    checkAuth();
+  }, []); // Solo ejecutar una vez al montar
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.email || !formData.password) {
+    if (!email || !password) {
       toast({
         title: "Campos incompletos",
         description: "Por favor ingresa email y contraseña",
@@ -45,8 +48,8 @@ export default function Login() {
     setLoading(true);
 
     try {
-      console.log("🔐 Intentando login con:", formData.email);
-      const result = await authService.login(formData.email, formData.password);
+      console.log("🔐 Intentando login con:", email);
+      const result = await authService.login(email, password);
 
       if (result.success && result.session) {
         console.log("✅ Login exitoso:", result.session);
@@ -159,7 +162,7 @@ export default function Login() {
                   </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleLogin} className="space-y-6">
                   <div>
                     <Label htmlFor="email" className="text-gray-700 mb-2 block">
                       Email
@@ -169,8 +172,8 @@ export default function Login() {
                       <Input
                         id="email"
                         type="email"
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                         placeholder="tu@email.com"
                         className="pl-12 h-14 rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                         disabled={loading}
@@ -188,8 +191,8 @@ export default function Login() {
                       <Input
                         id="password"
                         type="password"
-                        value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
                         className="pl-12 h-14 rounded-xl border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                         disabled={loading}
@@ -211,7 +214,8 @@ export default function Login() {
                     variant="ghost"
                     onClick={() => {
                       setSelectedRole(null);
-                      setFormData({ email: "", password: "" });
+                      setEmail("");
+                      setPassword("");
                     }}
                     className="w-full"
                     disabled={loading}

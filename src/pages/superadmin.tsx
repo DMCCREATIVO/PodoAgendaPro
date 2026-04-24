@@ -178,23 +178,16 @@ export default function SuperAdmin() {
 
   const loadData = async () => {
     try {
-      console.log("📊 SuperAdmin - Cargando datos...");
-
       // Cargar empresas
-      const { data: companiesData, error: companiesError } = await supabase
+      const { data: companiesData } = await supabase
         .from("companies")
         .select("*")
         .order("created_at", { ascending: false });
       
-      if (companiesError) {
-        console.error("Error cargando empresas:", companiesError);
-      } else {
-        console.log("✅ Empresas cargadas:", companiesData?.length);
-        setCompanies(companiesData || []);
-      }
+      setCompanies(companiesData || []);
 
       // Cargar usuarios CON sus roles y empresas
-      const { data: usersData, error: usersError } = await supabase
+      const { data: usersData } = await supabase
         .from("users")
         .select(`
           *,
@@ -211,52 +204,44 @@ export default function SuperAdmin() {
         `)
         .order("created_at", { ascending: false });
       
-      if (usersError) {
-        console.error("❌ Error cargando usuarios:", usersError);
-        setUsers([]);
-      } else {
-        console.log("✅ Usuarios cargados (raw):", usersData?.length, usersData);
-        
-        // Transformar datos para la tabla
-        const transformedUsers = (usersData || []).map((user: any) => {
-          console.log("🔍 Procesando usuario:", user.email, "is_superadmin:", user.is_superadmin, "company_users:", user.company_users);
-          
-          // Si es superadmin
-          if (user.is_superadmin) {
-            return {
-              ...user,
-              role: "superadmin",
-              company_name: "Sistema",
-              company_id: null,
-              cu_status: "active"
-            };
-          }
-          
-          // Si tiene company_users (puede tener múltiples)
-          if (user.company_users && user.company_users.length > 0) {
-            const firstCompany = user.company_users[0];
-            return {
-              ...user,
-              role: firstCompany.role,
-              company_name: firstCompany.companies?.name || "Sin empresa",
-              company_id: firstCompany.company_id,
-              cu_status: firstCompany.status
-            };
-          }
-          
-          // Usuario sin empresa asignada
+      console.log("👥 Usuarios cargados con roles:", usersData);
+      
+      // Transformar datos para la tabla
+      const transformedUsers = (usersData || []).map((user: any) => {
+        // Si es superadmin
+        if (user.is_superadmin) {
           return {
             ...user,
-            role: "sin_asignar",
-            company_name: "Sin empresa",
+            role: "superadmin",
+            company_name: "Sistema",
             company_id: null,
-            cu_status: "inactive"
+            cu_status: "active"
           };
-        });
+        }
         
-        console.log("✅ Usuarios transformados:", transformedUsers.length, transformedUsers);
-        setUsers(transformedUsers);
-      }
+        // Si tiene company_users (puede tener múltiples)
+        if (user.company_users && user.company_users.length > 0) {
+          const firstCompany = user.company_users[0];
+          return {
+            ...user,
+            role: firstCompany.role,
+            company_name: firstCompany.companies?.name || "Sin empresa",
+            company_id: firstCompany.company_id,
+            cu_status: firstCompany.status
+          };
+        }
+        
+        // Usuario sin empresa asignada
+        return {
+          ...user,
+          role: "sin_asignar",
+          company_name: "Sin empresa",
+          company_id: null,
+          cu_status: "inactive"
+        };
+      });
+      
+      setUsers(transformedUsers);
 
       // Cargar planes
       const { data: plansData } = await supabase
@@ -321,12 +306,9 @@ export default function SuperAdmin() {
       }
 
       // Calcular estadísticas
-      const totalUsers = usersData?.length || 0;
-      console.log("📈 Stats calculadas - Total usuarios:", totalUsers);
-      
       setStats({
         totalCompanies: companiesData?.length || 0,
-        totalUsers: totalUsers,
+        totalUsers: transformedUsers?.length || 0,
         activeCompanies: companiesData?.filter((c: any) => c.is_active && c.plan_status === 'active').length || 0,
         monthlyRevenue: companiesData?.reduce((sum: number, c: any) => {
           const plan = plansData?.find((p: any) => p.id === c.plan);
@@ -334,7 +316,7 @@ export default function SuperAdmin() {
         }, 0) || 0,
       });
     } catch (error) {
-      console.error("💥 Error loading data:", error);
+      console.error("Error loading data:", error);
     }
   };
 
