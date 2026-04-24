@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { authService } from "@/services/auth";
+import type { Session } from "@/services/auth";
 import { SEO } from "@/components/SEO";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,23 +9,31 @@ import { Shield, LogOut, CheckCircle } from "lucide-react";
 
 export default function SuperAdmin() {
   const router = useRouter();
-  const session = authService.getSession();
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Solo ejecutar en el cliente
+    const currentSession = authService.getSession();
+    
     // Guard: Solo SuperAdmins
-    if (!authService.isSuperAdmin()) {
+    if (!currentSession || !currentSession.isSuperadmin) {
       router.replace("/login");
+      return;
     }
-  }, []);
+    
+    setSession(currentSession);
+    setLoading(false);
+  }, [router]);
 
   const handleLogout = () => {
     authService.logout();
     router.replace("/login");
   };
 
-  if (!session) {
+  if (loading || !session) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-blue-50">
         <p className="text-muted-foreground">Verificando acceso...</p>
       </div>
     );

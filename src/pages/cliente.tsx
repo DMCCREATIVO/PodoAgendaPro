@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { authService } from "@/services/auth";
+import type { Session } from "@/services/auth";
 import { SEO } from "@/components/SEO";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,23 +9,30 @@ import { User, LogOut, CheckCircle } from "lucide-react";
 
 export default function Cliente() {
   const router = useRouter();
-  const session = authService.getSession();
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const currentSession = authService.getSession();
+    
     // Guard: Solo Pacientes
-    if (!authService.hasRole("patient")) {
+    if (!currentSession || currentSession.role !== "patient") {
       router.replace("/login");
+      return;
     }
-  }, []);
+    
+    setSession(currentSession);
+    setLoading(false);
+  }, [router]);
 
   const handleLogout = () => {
     authService.logout();
     router.replace("/login");
   };
 
-  if (!session) {
+  if (loading || !session) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50">
         <p className="text-muted-foreground">Verificando acceso...</p>
       </div>
     );
