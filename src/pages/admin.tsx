@@ -391,7 +391,7 @@ export default function Admin() {
   }
 
   return (
-    <AdminLayout activeTab={activeTab}>
+    <AdminLayout>
       <SEO title="Panel Admin - PodoAgenda Pro" />
 
       {/* Dashboard Tab */}
