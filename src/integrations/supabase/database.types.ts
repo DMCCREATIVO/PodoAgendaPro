@@ -1170,6 +1170,7 @@ export type Database = {
       users: {
         Row: {
           avatar_url: string | null
+          company_id: string | null
           created_at: string | null
           created_by: string | null
           email: string
@@ -1179,9 +1180,11 @@ export type Database = {
           is_superadmin: boolean | null
           last_login_at: string | null
           phone: string | null
+          role: string | null
         }
         Insert: {
           avatar_url?: string | null
+          company_id?: string | null
           created_at?: string | null
           created_by?: string | null
           email: string
@@ -1191,9 +1194,11 @@ export type Database = {
           is_superadmin?: boolean | null
           last_login_at?: string | null
           phone?: string | null
+          role?: string | null
         }
         Update: {
           avatar_url?: string | null
+          company_id?: string | null
           created_at?: string | null
           created_by?: string | null
           email?: string
@@ -1203,8 +1208,24 @@ export type Database = {
           is_superadmin?: boolean | null
           last_login_at?: string | null
           phone?: string | null
+          role?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "users_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "users_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "public_companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

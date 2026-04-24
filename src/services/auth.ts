@@ -1,6 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
 
-// Tipos
 export interface Session {
   userId: string;
   email: string;
@@ -10,159 +9,78 @@ export interface Session {
   isSuperadmin: boolean;
 }
 
-// Clave para localStorage
-const SESSION_KEY = "podoagenda_session";
-
-/**
- * Servicio de Autenticación
- * Maneja login, roles y sesión
- */
 export const authService = {
-  /**
-   * Login: Valida credenciales y crea sesión
-   */
   async login(email: string, password: string): Promise<{ success: boolean; session?: Session; error?: string }> {
     try {
-      const emailLowerCase = email.toLowerCase().trim();
-      
-      console.log("🔐 LOGIN INICIADO:");
-      console.log("Email:", emailLowerCase);
+      console.log("🔐 [SIMPLE] Login:", email);
 
-      // 1. Buscar usuario por email
+      // 1. Autenticar en Supabase
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (authError || !authData.user) {
+        console.error("❌ Error auth:", authError);
+        return { success: false, error: "Credenciales incorrectas" };
+      }
+
+      // 2. Buscar usuario - SIMPLE: todo en tabla users
       const { data: user, error: userError } = await supabase
         .from("users")
-        .select("id, email, full_name, is_superadmin")
-        .eq("email", emailLowerCase)
+        .select("*")
+        .eq("id", authData.user.id)
         .single();
 
       if (userError || !user) {
-        console.error("❌ Usuario no encontrado");
-        return { 
-          success: false, 
-          error: "Usuario no encontrado o credenciales incorrectas"
-        };
+        console.error("❌ Usuario no encontrado:", userError);
+        return { success: false, error: "Usuario no configurado" };
       }
 
-      console.log("✅ Usuario encontrado:", user.email);
+      console.log("✅ Usuario encontrado:", { email: user.email, role: user.role, company_id: user.company_id });
 
-      // 2. Verificar contraseña (demo password por ahora)
-      if (password !== "Admin123!") {
-        console.error("❌ Contraseña incorrecta");
-        return { 
-          success: false, 
-          error: "Contraseña incorrecta"
-        };
-      }
-
-      console.log("✅ Contraseña correcta");
-
-      // 3. Determinar rol
-      let role: Session["role"] = "patient";
-      let companyId: string | undefined;
-
-      // Si es superadmin, eso tiene prioridad
-      if (user.is_superadmin) {
-        role = "superadmin";
-        console.log("✅ Usuario es SuperAdmin");
-      } else {
-        // Buscar rol en company_users
-        const { data: companyUser, error: companyError } = await supabase
-          .from("company_users")
-          .select("role, company_id, status")
-          .eq("user_id", user.id)
-          .eq("status", "active")
-          .maybeSingle(); // Usar maybeSingle en lugar de single para evitar error si no existe
-
-        console.log("Company user data:", companyUser);
-        console.log("Company user error:", companyError);
-
-        if (companyUser) {
-          // Mapear role correctamente
-          role = companyUser.role as Session["role"];
-          companyId = companyUser.company_id;
-          console.log("✅ Rol encontrado en company_users:", role);
-        } else {
-          // Si no tiene company_users, es paciente
-          console.log("ℹ️ Usuario es paciente (sin company_users o inactivo)");
-          role = "patient";
-        }
-      }
-
-      // 4. Crear sesión
+      // 3. SIMPLE: Crear sesión directamente desde users
       const session: Session = {
         userId: user.id,
         email: user.email,
-        fullName: user.full_name || "Usuario",
-        role,
-        companyId,
+        fullName: user.full_name || email,
+        role: user.role || (user.is_superadmin ? "superadmin" : "patient"),
+        companyId: user.company_id || undefined,
         isSuperadmin: user.is_superadmin || false,
       };
 
-      console.log("✅ Sesión creada:", session);
-
-      // 5. Guardar en localStorage
-      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-      console.log("✅ Sesión guardada en localStorage");
-
+      localStorage.setItem("podoagenda_session", JSON.stringify(session));
+      console.log("✅ Sesión guardada:", session);
+      
       return { success: true, session };
     } catch (error: any) {
-      console.error("💥 Error inesperado en login:", error);
-      return { success: false, error: error.message || "Error inesperado al iniciar sesión" };
+      console.error("💥 Error login:", error);
+      return { success: false, error: error.message };
     }
   },
 
-  /**
-   * Logout: Elimina sesión
-   */
-  logout(): void {
-    localStorage.removeItem(SESSION_KEY);
-    console.log("✅ Sesión eliminada");
-  },
-
-  /**
-   * Obtener sesión actual
-   */
   getSession(): Session | null {
     try {
-      const data = localStorage.getItem(SESSION_KEY);
-      if (!data) return null;
-      return JSON.parse(data) as Session;
-    } catch {
+      const sessionData = localStorage.getItem("podoagenda_session");
+      if (!sessionData) return null;
+      return JSON.parse(sessionData) as Session;
+    } catch (error) {
+      localStorage.removeItem("podoagenda_session");
       return null;
     }
   },
 
-  /**
-   * Verificar si hay sesión activa
-   */
-  isAuthenticated(): boolean {
-    return this.getSession() !== null;
+  async logout(): Promise<void> {
+    await supabase.auth.signOut();
+    localStorage.removeItem("podoagenda_session");
+    console.log("✅ Sesión cerrada");
   },
 
-  /**
-   * Verificar si es SuperAdmin
-   */
-  isSuperAdmin(): boolean {
-    const session = this.getSession();
-    return session?.isSuperadmin === true;
-  },
-
-  /**
-   * Verificar rol específico
-   */
-  hasRole(role: Session["role"]): boolean {
-    const session = this.getSession();
-    return session?.role === role;
-  },
-
-  /**
-   * Obtener ruta de dashboard según rol
-   */
   getDashboardRoute(): string {
     const session = this.getSession();
     if (!session) return "/login";
-
-    if (session.isSuperadmin) return "/superadmin";
+    
+    if (session.isSuperadmin || session.role === "superadmin") return "/superadmin";
     if (session.role === "owner" || session.role === "admin") return "/admin";
     if (session.role === "employee") return "/podologo";
     return "/cliente";
