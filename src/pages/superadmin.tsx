@@ -47,6 +47,21 @@ import {
   Webhook,
   Save,
   Pencil,
+  Building,
+  UserCog,
+  Crown,
+  Zap,
+  Rocket,
+  AlertCircle,
+  Clock,
+  Upload,
+  Key,
+  Infinity,
+  MessageSquare,
+  CreditCard,
+  Webhook,
+  Save,
+  Pencil,
 } from "lucide-react";
 
 // Tipos
@@ -1000,97 +1015,336 @@ export default function SuperAdmin() {
         </DialogContent>
       </Dialog>
 
-      {/* Dashboard Tab */}
+      {/* Dashboard Tab - MEJORADO */}
       {activeTabId === "dashboard" && (
-        <div className="space-y-8">
+        <div className="space-y-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard Global</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard SuperAdmin</h1>
             <p className="text-gray-600">Vista general del sistema</p>
           </div>
 
           {/* KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card className="p-6 bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-xl">
-              <div className="flex items-center justify-between mb-4">
-                <Building2 className="w-8 h-8 opacity-80" />
-                <Badge className="bg-white/20 text-white border-0">Total</Badge>
-              </div>
-              <p className="text-sm opacity-80 mb-1">Empresas</p>
-              <p className="text-4xl font-bold">{stats.totalCompanies}</p>
-              <div className="flex items-center gap-2 mt-3 text-sm opacity-80">
-                <TrendingUp className="w-4 h-4" />
-                <span>{stats.activeCompanies} activas</span>
-              </div>
-            </Card>
-
-            <Card className="p-6 bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-xl">
-              <div className="flex items-center justify-between mb-4">
-                <Users className="w-8 h-8 opacity-80" />
-                <Badge className="bg-white/20 text-white border-0">Total</Badge>
-              </div>
-              <p className="text-sm opacity-80 mb-1">Usuarios</p>
-              <p className="text-4xl font-bold">{stats.totalUsers}</p>
-              <div className="flex items-center gap-2 mt-3 text-sm opacity-80">
-                <TrendingUp className="w-4 h-4" />
-                <span>Sistema global</span>
+            {/* Total Empresas */}
+            <Card className="p-6 border-l-4 border-blue-500 hover:shadow-lg transition-shadow">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-2">Total Empresas</p>
+                  <p className="text-4xl font-bold text-gray-900">{stats.totalCompanies}</p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {stats.activeCompanies} activas
+                  </p>
+                </div>
+                <div className="p-3 bg-blue-100 rounded-full">
+                  <Building className="w-6 h-6 text-blue-600" />
+                </div>
               </div>
             </Card>
 
-            <Card className="p-6 bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-xl">
-              <div className="flex items-center justify-between mb-4">
-                <DollarSign className="w-8 h-8 opacity-80" />
-                <Badge className="bg-white/20 text-white border-0">Mensual</Badge>
-              </div>
-              <p className="text-sm opacity-80 mb-1">Ingresos MRR</p>
-              <p className="text-4xl font-bold">${stats.monthlyRevenue}</p>
-              <div className="flex items-center gap-2 mt-3 text-sm opacity-80">
-                <TrendingUp className="w-4 h-4" />
-                <span>Recurrente</span>
+            {/* Total Usuarios */}
+            <Card className="p-6 border-l-4 border-green-500 hover:shadow-lg transition-shadow">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-2">Total Usuarios</p>
+                  <p className="text-4xl font-bold text-gray-900">{stats.totalUsers}</p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {users.filter((u: any) => u.is_active).length} activos
+                  </p>
+                </div>
+                <div className="p-3 bg-green-100 rounded-full">
+                  <Users className="w-6 h-6 text-green-600" />
+                </div>
               </div>
             </Card>
 
-            <Card className="p-6 bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-xl">
-              <div className="flex items-center justify-between mb-4">
-                <Activity className="w-8 h-8 opacity-80" />
-                <Badge className="bg-white/20 text-white border-0">Estado</Badge>
+            {/* Ingresos Mensuales */}
+            <Card className="p-6 border-l-4 border-purple-500 hover:shadow-lg transition-shadow">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-2">Ingresos Mensuales</p>
+                  <p className="text-4xl font-bold text-gray-900">
+                    ${stats.monthlyRevenue.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-2">MRR estimado</p>
+                </div>
+                <div className="p-3 bg-purple-100 rounded-full">
+                  <DollarSign className="w-6 h-6 text-purple-600" />
+                </div>
               </div>
-              <p className="text-sm opacity-80 mb-1">Sistema</p>
-              <p className="text-4xl font-bold">98%</p>
-              <div className="flex items-center gap-2 mt-3 text-sm opacity-80">
-                <Check className="w-4 h-4" />
-                <span>Operativo</span>
+            </Card>
+
+            {/* Empresas Activas */}
+            <Card className="p-6 border-l-4 border-orange-500 hover:shadow-lg transition-shadow">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600 mb-2">Empresas Activas</p>
+                  <p className="text-4xl font-bold text-gray-900">{stats.activeCompanies}</p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {stats.totalCompanies > 0 
+                      ? `${((stats.activeCompanies / stats.totalCompanies) * 100).toFixed(0)}% del total`
+                      : '0%'
+                    }
+                  </p>
+                </div>
+                <div className="p-3 bg-orange-100 rounded-full">
+                  <TrendingUp className="w-6 h-6 text-orange-600" />
+                </div>
               </div>
             </Card>
           </div>
 
-          {/* Recent Activity */}
-          <Card className="p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Empresas Recientes</h2>
-            <div className="space-y-4">
-              {companies.slice(0, 5).map((company) => (
-                <div key={company.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                  <div className="flex items-center gap-4">
-                    {company.logo_url ? (
-                      <img src={company.logo_url} alt={company.name} className="w-12 h-12 rounded-xl object-cover shadow-lg" />
-                    ) : (
-                      <div 
-                        className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg"
-                        style={{ background: `linear-gradient(135deg, ${(company.metadata as any)?.primary_color || '#2563EB'}, ${(company.metadata as any)?.secondary_color || '#8B5CF6'})` }}
-                      >
+          {/* Gráficos y Distribución */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Distribución de Roles */}
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <UserCog className="w-5 h-5 text-blue-600" />
+                Distribución de Roles
+              </h3>
+              <div className="space-y-4">
+                {[
+                  { 
+                    role: 'superadmin', 
+                    label: 'SuperAdmins', 
+                    count: users.filter((u: any) => u.role === 'superadmin').length,
+                    color: 'bg-purple-500',
+                    lightColor: 'bg-purple-100',
+                    textColor: 'text-purple-700'
+                  },
+                  { 
+                    role: 'owner', 
+                    label: 'Owners', 
+                    count: users.filter((u: any) => u.role === 'owner').length,
+                    color: 'bg-blue-500',
+                    lightColor: 'bg-blue-100',
+                    textColor: 'text-blue-700'
+                  },
+                  { 
+                    role: 'admin', 
+                    label: 'Admins', 
+                    count: users.filter((u: any) => u.role === 'admin').length,
+                    color: 'bg-green-500',
+                    lightColor: 'bg-green-100',
+                    textColor: 'text-green-700'
+                  },
+                  { 
+                    role: 'employee', 
+                    label: 'Podólogos', 
+                    count: users.filter((u: any) => u.role === 'employee').length,
+                    color: 'bg-orange-500',
+                    lightColor: 'bg-orange-100',
+                    textColor: 'text-orange-700'
+                  },
+                  { 
+                    role: 'patient', 
+                    label: 'Pacientes', 
+                    count: users.filter((u: any) => u.role === 'patient').length,
+                    color: 'bg-gray-500',
+                    lightColor: 'bg-gray-100',
+                    textColor: 'text-gray-700'
+                  },
+                ].map((item) => {
+                  const percentage = stats.totalUsers > 0 
+                    ? (item.count / stats.totalUsers) * 100 
+                    : 0;
+                  
+                  return (
+                    <div key={item.role}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${item.color}`}></div>
+                          <span className="text-sm font-medium text-gray-700">{item.label}</span>
+                        </div>
+                        <span className={`text-sm font-semibold ${item.textColor}`}>
+                          {item.count} ({percentage.toFixed(0)}%)
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full ${item.color} transition-all duration-500`}
+                          style={{ width: `${percentage}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+
+            {/* Distribución de Planes */}
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Crown className="w-5 h-5 text-purple-600" />
+                Distribución de Planes
+              </h3>
+              <div className="space-y-4">
+                {plans.map((plan) => {
+                  const companiesWithPlan = companies.filter((c: any) => c.plan === plan.id).length;
+                  const percentage = stats.totalCompanies > 0 
+                    ? (companiesWithPlan / stats.totalCompanies) * 100 
+                    : 0;
+                  
+                  const colors = {
+                    'Free': { bg: 'bg-gray-500', light: 'bg-gray-100', text: 'text-gray-700' },
+                    'Pro': { bg: 'bg-blue-500', light: 'bg-blue-100', text: 'text-blue-700' },
+                    'Enterprise': { bg: 'bg-purple-500', light: 'bg-purple-100', text: 'text-purple-700' },
+                  };
+                  
+                  const color = colors[plan.name as keyof typeof colors] || colors.Free;
+                  
+                  return (
+                    <div key={plan.id}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${color.bg}`}></div>
+                          <span className="text-sm font-medium text-gray-700">
+                            {plan.name} - ${plan.price_monthly}/mes
+                          </span>
+                        </div>
+                        <span className={`text-sm font-semibold ${color.text}`}>
+                          {companiesWithPlan} ({percentage.toFixed(0)}%)
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full ${color.bg} transition-all duration-500`}
+                          style={{ width: `${percentage}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          </div>
+
+          {/* Últimas Empresas y Usuarios */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Últimas Empresas */}
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Building className="w-5 h-5 text-blue-600" />
+                  Últimas Empresas
+                </h3>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setActiveTabId('empresas')}
+                >
+                  Ver todas →
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {companies.slice(0, 5).map((company: any) => (
+                  <div 
+                    key={company.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
                         {company.name.charAt(0)}
                       </div>
-                    )}
-                    <div>
-                      <p className="font-semibold text-gray-900">{company.name}</p>
-                      <p className="text-sm text-gray-600">{company.email}</p>
+                      <div>
+                        <p className="font-medium text-gray-900">{company.name}</p>
+                        <p className="text-xs text-gray-500">/{company.slug}</p>
+                      </div>
                     </div>
+                    <Badge 
+                      variant={company.is_active ? "default" : "secondary"}
+                      className={company.is_active ? "bg-green-500" : "bg-gray-500"}
+                    >
+                      {company.is_active ? "Activa" : "Inactiva"}
+                    </Badge>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {getPlanBadge(company.plan, company.custom_plan)}
-                    {getStatusBadge(company.plan_status)}
+                ))}
+              </div>
+            </Card>
+
+            {/* Últimos Usuarios */}
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-green-600" />
+                  Últimos Usuarios
+                </h3>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setActiveTabId('usuarios')}
+                >
+                  Ver todos →
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {users.slice(0, 5).map((user: any) => (
+                  <div 
+                    key={user.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-blue-500 flex items-center justify-center text-white font-semibold">
+                        {user.full_name?.charAt(0) || user.email.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{user.full_name || "Sin nombre"}</p>
+                        <p className="text-xs text-gray-500">{user.email}</p>
+                      </div>
+                    </div>
+                    <Badge 
+                      variant={
+                        user.role === "superadmin" ? "destructive" :
+                        user.role === "owner" ? "default" :
+                        user.role === "employee" ? "outline" :
+                        "secondary"
+                      }
+                      className={
+                        user.role === "superadmin" ? "bg-purple-600" :
+                        user.role === "owner" ? "bg-blue-600" :
+                        user.role === "employee" ? "bg-orange-600" :
+                        "bg-gray-500"
+                      }
+                    >
+                      {user.role === "superadmin" ? "SuperAdmin" :
+                       user.role === "owner" ? "Owner" :
+                       user.role === "employee" ? "Podólogo" :
+                       user.role === "admin" ? "Admin" :
+                       "Paciente"}
+                    </Badge>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+            </Card>
+          </div>
+
+          {/* Resumen Rápido */}
+          <Card className="p-6 bg-gradient-to-br from-blue-50 to-purple-50">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-blue-600" />
+              Resumen del Sistema
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-center p-4 bg-white rounded-lg">
+                <p className="text-2xl font-bold text-blue-600">
+                  {users.filter((u: any) => u.role === 'employee').length}
+                </p>
+                <p className="text-sm text-gray-600 mt-1">Podólogos Totales</p>
+              </div>
+              <div className="text-center p-4 bg-white rounded-lg">
+                <p className="text-2xl font-bold text-green-600">
+                  {companies.filter((c: any) => c.plan_status === 'active').length}
+                </p>
+                <p className="text-sm text-gray-600 mt-1">Empresas Pagando</p>
+              </div>
+              <div className="text-center p-4 bg-white rounded-lg">
+                <p className="text-2xl font-bold text-purple-600">
+                  {stats.totalCompanies > 0 
+                    ? (users.filter((u: any) => u.role === 'employee').length / stats.totalCompanies).toFixed(1)
+                    : 0
+                  }
+                </p>
+                <p className="text-sm text-gray-600 mt-1">Podólogos por Empresa</p>
+              </div>
             </div>
           </Card>
         </div>
@@ -1807,6 +2061,7 @@ export default function SuperAdmin() {
                          user.role === "owner" ? "Owner" :
                          user.role === "admin" ? "Admin" :
                          user.role === "employee" ? "Podólogo" :
+                         user.role === "patient" ? "Paciente" :
                          "Sin Asignar"}
                       </Badge>
                     </TableCell>
