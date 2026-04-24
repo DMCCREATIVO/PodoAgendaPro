@@ -43,9 +43,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
     if (data) {
       setCompanyData(data);
+      
+      const metadata = data.metadata as any;
       // Aplicar colores personalizados
-      if (data.metadata?.primary_color) setPrimaryColor(data.metadata.primary_color);
-      if (data.metadata?.secondary_color) setSecondaryColor(data.metadata.secondary_color);
+      if (metadata?.primary_color) setPrimaryColor(metadata.primary_color);
+      if (metadata?.secondary_color) setSecondaryColor(metadata.secondary_color);
     }
   };
 

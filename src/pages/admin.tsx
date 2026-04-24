@@ -180,13 +180,13 @@ export default function AdminPanel() {
 
     // Cargar usuarios activos
     const { data: podologosData } = await supabase
-      .from("users")
-      .select("*")
-      .eq("role", "employee")
-      .in("id", [companyId]); // Simplificado
+      .from("company_users")
+      .select("user_id")
+      .eq("company_id", companyId)
+      .eq("role", "employee");
 
     const { data: pacientesData } = await supabase
-      .from("patients")
+      .from("clients")
       .select("*")
       .eq("company_id", companyId)
       .eq("is_active", true);
@@ -216,16 +216,21 @@ export default function AdminPanel() {
 
   const loadPodologos = async (companyId: string) => {
     const { data } = await supabase
-      .from("users")
-      .select("*")
+      .from("company_users")
+      .select(`
+        role,
+        is_active,
+        users (*)
+      `)
+      .eq("company_id", companyId)
       .eq("role", "employee");
 
-    setPodologos(data || []);
+    setPodologos(data?.map(d => ({ ...d.users, is_active: d.is_active })) || []);
   };
 
   const loadPacientes = async (companyId: string) => {
     const { data } = await supabase
-      .from("patients")
+      .from("clients")
       .select("*")
       .eq("company_id", companyId)
       .order("created_at", { ascending: false });
@@ -238,12 +243,12 @@ export default function AdminPanel() {
       .from("appointments")
       .select(`
         *,
-        patients (full_name, phone),
-        users!appointments_podiatrist_id_fkey (full_name)
+        clients (full_name, phone),
+        users!appointments_assigned_to_fkey (full_name)
       `)
       .eq("company_id", companyId)
       .order("appointment_date", { ascending: false })
-      .order("appointment_time", { ascending: true });
+      .order("start_time", { ascending: true });
 
     setAppointments(data || []);
   };
@@ -255,7 +260,7 @@ export default function AdminPanel() {
         *,
         appointments (
           appointment_date,
-          patients (full_name)
+          clients (full_name)
         )
       `)
       .eq("company_id", companyId)
@@ -292,16 +297,26 @@ export default function AdminPanel() {
             return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); 
           });
 
-      const { error } = await supabase.from("users").insert([{
+      // Insertar en users
+      const { error: userError } = await supabase.from("users").insert([{
         id: userId,
         email: podologoForm.email,
         full_name: podologoForm.full_name,
         phone: podologoForm.phone,
-        role: "employee",
         is_active: true,
       }]);
 
-      if (error) throw error;
+      if (userError) throw userError;
+
+      // Insertar en company_users
+      const { error: relError } = await supabase.from("company_users").insert([{
+        company_id: session.companyId,
+        user_id: userId,
+        role: "employee",
+        is_active: true
+      }]);
+
+      if (relError) throw relError;
 
       setPodologoDialogOpen(false);
       setPodologoForm({ full_name: "", email: "", phone: "", specialization: "", schedule: "" });
@@ -313,8 +328,12 @@ export default function AdminPanel() {
 
   const handleCreatePaciente = async () => {
     try {
-      const { error } = await supabase.from("patients").insert([{
-        ...pacienteForm,
+      const { error } = await supabase.from("clients").insert([{
+        full_name: pacienteForm.full_name,
+        email: pacienteForm.email,
+        phone: pacienteForm.phone,
+        address: pacienteForm.address,
+        date_of_birth: pacienteForm.birth_date,
         company_id: session.companyId,
         is_active: true,
       }]);
@@ -795,13 +814,13 @@ export default function AdminPanel() {
                         <Calendar className="h-4 w-4 text-slate-600" />
                         <div>
                           <p className="font-medium">{new Date(apt.appointment_date).toLocaleDateString()}</p>
-                          <p className="text-sm text-slate-600">{apt.appointment_time}</p>
+                          <p className="text-sm text-slate-600">{apt.start_time}</p>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <p className="font-medium">{apt.patients?.full_name}</p>
-                      <p className="text-sm text-slate-600">{apt.patients?.phone}</p>
+                      <p className="font-medium">{apt.clients?.full_name}</p>
+                      <p className="text-sm text-slate-600">{apt.clients?.phone}</p>
                     </TableCell>
                     <TableCell>{apt.users?.full_name}</TableCell>
                     <TableCell>{getStatusBadge(apt.status)}</TableCell>
@@ -869,7 +888,7 @@ export default function AdminPanel() {
                         {new Date(payment.created_at).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        {payment.appointments?.patients?.full_name || "N/A"}
+                        {payment.appointments?.clients?.full_name || "N/A"}
                       </TableCell>
                       <TableCell className="font-bold text-slate-900">
                         ${Number(payment.amount).toLocaleString()}
