@@ -166,7 +166,7 @@ export default function SuperAdmin() {
         activeCompanies: companiesData?.filter((c: any) => c.is_active && c.plan_status === 'active').length || 0,
         monthlyRevenue: companiesData?.reduce((sum: number, c: any) => {
           const plan = plansData?.find((p: any) => p.id === c.plan);
-          return sum + (parseFloat(plan?.price_monthly) || 0);
+          return sum + (Number(plan?.price_monthly) || 0);
         }, 0) || 0,
       });
     } catch (error) {
@@ -230,10 +230,19 @@ export default function SuperAdmin() {
 
       if (companyError) throw companyError;
 
+      // Generar ID único
+      const userId = typeof crypto !== 'undefined' && crypto.randomUUID 
+        ? crypto.randomUUID() 
+        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { 
+            const r = Math.random() * 16 | 0; 
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); 
+          });
+
       // Crear usuario admin de la empresa
       const { data: adminUser, error: userError } = await supabase
         .from("users")
         .insert([{
+          id: userId,
           email: companyForm.admin_email,
           full_name: companyForm.admin_name,
           is_active: true,
@@ -381,10 +390,17 @@ export default function SuperAdmin() {
   const handleCreateUser = async () => {
     try {
       const password = userForm.password || generatePassword();
+      const userId = typeof crypto !== 'undefined' && crypto.randomUUID 
+        ? crypto.randomUUID() 
+        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { 
+            const r = Math.random() * 16 | 0; 
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); 
+          });
 
       const { data: userData, error: userError } = await supabase
         .from("users")
         .insert([{
+          id: userId,
           email: userForm.email,
           full_name: userForm.full_name,
           is_active: true,
