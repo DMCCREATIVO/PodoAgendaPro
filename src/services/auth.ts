@@ -10,160 +10,114 @@ export interface Session {
   isSuperadmin: boolean;
 }
 
-// Clave para localStorage
-const SESSION_KEY = "podoagenda_session";
-
-/**
- * Servicio de Autenticación
- * Maneja login, roles y sesión
- */
 export const authService = {
-  /**
-   * Login: Valida credenciales y crea sesión
-   */
   async login(email: string, password: string): Promise<{ success: boolean; session?: Session; error?: string }> {
     try {
-      const emailLowerCase = email.toLowerCase().trim();
-      
-      console.log("🔐 LOGIN INICIADO:");
-      console.log("Email:", emailLowerCase);
+      console.log("🔐 Iniciando login para:", email);
 
       // 1. Buscar usuario por email
       const { data: user, error: userError } = await supabase
         .from("users")
-        .select("id, email, full_name, is_superadmin")
-        .eq("email", emailLowerCase)
+        .select("*")
+        .eq("email", email)
         .single();
 
       if (userError || !user) {
-        console.error("❌ Usuario no encontrado");
-        return { 
-          success: false, 
-          error: "Usuario no encontrado o credenciales incorrectas"
-        };
+        console.error("❌ Usuario no encontrado:", userError);
+        return { success: false, error: "Credenciales incorrectas" };
       }
 
-      console.log("✅ Usuario encontrado:", user.email);
+      console.log("✅ Usuario encontrado:", user);
 
-      // 2. Verificar contraseña (demo password por ahora)
-      if (password !== "Admin123!") {
-        console.error("❌ Contraseña incorrecta");
-        return { 
-          success: false, 
-          error: "Contraseña incorrecta"
-        };
-      }
-
-      console.log("✅ Contraseña correcta");
-
-      // 3. Determinar rol
-      let role: Session["role"] = "patient";
-      let companyId: string | undefined;
-
-      // Si es superadmin, eso tiene prioridad
+      // 2. Si es superadmin
       if (user.is_superadmin) {
-        role = "superadmin";
-        console.log("✅ Usuario es SuperAdmin");
-      } else {
-        // Buscar rol en company_users
-        const { data: companyUser, error: companyError } = await supabase
-          .from("company_users")
-          .select("role, company_id, status")
-          .eq("user_id", user.id)
-          .eq("status", "active")
-          .maybeSingle(); // Usar maybeSingle en lugar de single para evitar error si no existe
-
-        console.log("Company user data:", companyUser);
-        console.log("Company user error:", companyError);
-
-        if (companyUser) {
-          // Mapear role correctamente
-          role = companyUser.role as Session["role"];
-          companyId = companyUser.company_id;
-          console.log("✅ Rol encontrado en company_users:", role);
-        } else {
-          // Si no tiene company_users, es paciente
-          console.log("ℹ️ Usuario es paciente (sin company_users o inactivo)");
-          role = "patient";
-        }
+        const session: Session = {
+          userId: user.id,
+          email: user.email,
+          fullName: user.full_name || "SuperAdmin",
+          role: "superadmin",
+          isSuperadmin: true,
+        };
+        
+        localStorage.setItem("podoagenda_session", JSON.stringify(session));
+        console.log("✅ Sesión SuperAdmin guardada:", session);
+        return { success: true, session };
       }
+
+      // 3. Buscar en company_users
+      const { data: companyUser, error: cuError } = await supabase
+        .from("company_users")
+        .select(`
+          role,
+          company_id,
+          status,
+          companies (
+            id,
+            name,
+            slug
+          )
+        `)
+        .eq("user_id", user.id)
+        .eq("status", "active")
+        .single();
+
+      if (cuError || !companyUser) {
+        console.error("❌ Usuario sin empresa asignada:", cuError);
+        return { success: false, error: "Usuario sin empresa asignada o inactivo" };
+      }
+
+      console.log("✅ Relación empresa encontrada:", companyUser);
 
       // 4. Crear sesión
       const session: Session = {
         userId: user.id,
         email: user.email,
-        fullName: user.full_name || "Usuario",
-        role,
-        companyId,
-        isSuperadmin: user.is_superadmin || false,
+        fullName: user.full_name || email,
+        role: companyUser.role as any,
+        companyId: companyUser.company_id,
+        isSuperadmin: false,
       };
 
-      console.log("✅ Sesión creada:", session);
-
-      // 5. Guardar en localStorage
-      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-      console.log("✅ Sesión guardada en localStorage");
-
+      localStorage.setItem("podoagenda_session", JSON.stringify(session));
+      console.log("✅ Sesión guardada:", session);
       return { success: true, session };
+
     } catch (error: any) {
-      console.error("💥 Error inesperado en login:", error);
-      return { success: false, error: error.message || "Error inesperado al iniciar sesión" };
+      console.error("💥 Error en login:", error);
+      return { success: false, error: error.message };
     }
   },
 
-  /**
-   * Logout: Elimina sesión
-   */
-  logout(): void {
-    localStorage.removeItem(SESSION_KEY);
-    console.log("✅ Sesión eliminada");
-  },
-
-  /**
-   * Obtener sesión actual
-   */
   getSession(): Session | null {
     try {
-      const data = localStorage.getItem(SESSION_KEY);
-      if (!data) return null;
-      return JSON.parse(data) as Session;
-    } catch {
+      const sessionData = localStorage.getItem("podoagenda_session");
+      if (!sessionData) {
+        console.log("⚠️ No hay sesión en localStorage");
+        return null;
+      }
+
+      const session = JSON.parse(sessionData) as Session;
+      console.log("✅ Sesión recuperada:", session);
+      return session;
+    } catch (error) {
+      console.error("💥 Error parseando sesión:", error);
+      localStorage.removeItem("podoagenda_session");
       return null;
     }
   },
 
-  /**
-   * Verificar si hay sesión activa
-   */
-  isAuthenticated(): boolean {
-    return this.getSession() !== null;
+  logout(): void {
+    localStorage.removeItem("podoagenda_session");
+    console.log("✅ Sesión cerrada");
   },
 
-  /**
-   * Verificar si es SuperAdmin
-   */
-  isSuperAdmin(): boolean {
-    const session = this.getSession();
-    return session?.isSuperadmin === true;
-  },
-
-  /**
-   * Verificar rol específico
-   */
-  hasRole(role: Session["role"]): boolean {
-    const session = this.getSession();
-    return session?.role === role;
-  },
-
-  /**
-   * Obtener ruta de dashboard según rol
-   */
   getDashboardRoute(): string {
     const session = this.getSession();
     if (!session) return "/login";
-
+    
     if (session.isSuperadmin) return "/superadmin";
-    if (session.role === "owner" || session.role === "admin") return "/admin";
+    if (session.role === "owner") return "/admin";
+    if (session.role === "admin") return "/admin";
     if (session.role === "employee") return "/podologo";
     return "/cliente";
   },

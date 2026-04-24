@@ -1,39 +1,35 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
+import { authService } from "@/services/auth";
+import type { Session } from "@/services/auth";
+import { SEO } from "@/components/SEO";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { authService } from "@/services/auth";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   Calendar, 
   Users, 
+  UserCircle, 
   DollarSign, 
-  TrendingUp, 
-  Plus, 
-  Edit, 
-  Trash2,
-  Eye,
-  Phone,
-  Mail,
-  MapPin,
+  Settings,
+  TrendingUp,
+  Activity,
   Clock,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Stethoscope,
-  UserPlus,
-  Search,
-  Filter,
-  Download
+  Plus,
+  Edit,
+  Trash2,
+  Check,
+  X,
 } from "lucide-react";
 
 export default function Admin() {
@@ -43,24 +39,26 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+
+  // Estados de datos
   const [companyData, setCompanyData] = useState<any>(null);
-  const [planData, setPlanData] = useState<any>(null);
-
-  // States para Dashboard
   const [stats, setStats] = useState({
-    citasHoy: 0,
-    citasSemana: 0,
-    citasMes: 0,
-    ingresosMes: 0,
-    pacientesActivos: 0,
-    podologosActivos: 0,
+    todayAppointments: 0,
+    monthRevenue: 0,
+    newPatients: 0,
+    occupancy: 0,
   });
-  const [usageAlerts, setUsageAlerts] = useState<any[]>([]);
-
-  // States para Podólogos
+  const [appointments, setAppointments] = useState<any[]>([]);
   const [podologos, setPodologos] = useState<any[]>([]);
+  const [pacientes, setPacientes] = useState<any[]>([]);
+  const [cobros, setCobros] = useState<any[]>([]);
+
+  // Estados de modales
   const [podologoDialogOpen, setPodologoDialogOpen] = useState(false);
-  const [editingPodologo, setEditingPodologo] = useState<any>(null);
+  const [pacienteDialogOpen, setPacienteDialogOpen] = useState(false);
+
+  // Estados de formularios
   const [podologoForm, setPodologoForm] = useState({
     full_name: "",
     email: "",
@@ -69,10 +67,6 @@ export default function Admin() {
     schedule: "",
   });
 
-  // States para Pacientes
-  const [pacientes, setPacientes] = useState<any[]>([]);
-  const [pacienteDialogOpen, setPacienteDialogOpen] = useState(false);
-  const [editingPaciente, setEditingPaciente] = useState<any>(null);
   const [pacienteForm, setPacienteForm] = useState({
     full_name: "",
     email: "",
@@ -81,34 +75,17 @@ export default function Admin() {
     birth_date: "",
     medical_conditions: "",
   });
-  const [searchPaciente, setSearchPaciente] = useState("");
 
-  // States para Agenda
-  const [appointments, setAppointments] = useState<any[]>([]);
-  const [appointmentDialogOpen, setAppointmentDialogOpen] = useState(false);
-  const [appointmentForm, setAppointmentForm] = useState({
-    patient_id: "",
-    podiatrist_id: "",
-    service_id: "",
-    appointment_date: "",
-    appointment_time: "",
-    notes: "",
-  });
-
-  // States para Cobros
-  const [payments, setPayments] = useState<any[]>([]);
-  const [filterStatus, setFilterStatus] = useState("all");
-
-  // States para Configuración
   const [configForm, setConfigForm] = useState({
     name: "",
     phone: "",
     email: "",
     address: "",
-    opening_hours: "",
-    closing_hours: "",
+    opening_hours: "09:00",
+    closing_hours: "18:00",
     services: [] as string[],
   });
+
   const [integrations, setIntegrations] = useState({
     whatsapp_enabled: false,
     mercadopago_enabled: false,
@@ -119,10 +96,10 @@ export default function Admin() {
   }, []);
 
   useEffect(() => {
-    if (mounted) {
+    if (mounted && !loading) {
       checkAuth();
     }
-  }, [mounted, router]);
+  }, [mounted]);
 
   useEffect(() => {
     if (tab && typeof tab === "string") {
@@ -132,19 +109,21 @@ export default function Admin() {
 
   const checkAuth = async () => {
     try {
-      const session = authService.getSession();
+      console.log("🔍 Admin - Verificando autenticación...");
       
-      if (!session) {
+      const currentSession = authService.getSession();
+      
+      if (!currentSession) {
         console.log("❌ No hay sesión, redirigiendo a login");
         router.replace("/login");
         return;
       }
 
-      console.log("✅ Sesión encontrada:", session);
+      console.log("✅ Sesión encontrada:", currentSession);
 
       // Verificar que sea admin o owner
-      if (session.role !== "owner" && session.role !== "admin") {
-        console.log("❌ Usuario no es admin, redirigiendo");
+      if (currentSession.role !== "owner" && currentSession.role !== "admin") {
+        console.log("❌ Usuario no autorizado, rol:", currentSession.role);
         toast({
           title: "Acceso Denegado",
           description: "No tienes permisos para acceder al panel de administración",
@@ -154,8 +133,8 @@ export default function Admin() {
         return;
       }
 
-      if (!session.companyId) {
-        console.log("❌ Usuario admin sin empresa asignada");
+      if (!currentSession.companyId) {
+        console.log("❌ Usuario sin empresa asignada");
         toast({
           title: "Error de Configuración",
           description: "Tu usuario no tiene una empresa asignada",
@@ -165,198 +144,111 @@ export default function Admin() {
         return;
       }
 
-      console.log("✅ Usuario autorizado, cargando datos");
-      await loadData(session.companyId);
+      setSession(currentSession);
+      console.log("✅ Usuario autorizado, cargando datos de empresa:", currentSession.companyId);
+      await loadData(currentSession.companyId);
+      setLoading(false);
     } catch (error) {
       console.error("💥 Error en checkAuth:", error);
       setLoading(false);
+      router.replace("/login");
     }
   };
 
   const loadData = async (companyId: string) => {
-    setLoading(true);
-    const sessionData = JSON.parse(localStorage.getItem("session") || "{}");
+    try {
+      console.log("📊 Cargando datos para empresa:", companyId);
 
-    // Cargar datos de la empresa
-    const { data: company } = await supabase
-      .from("companies")
-      .select("*")
-      .eq("id", sessionData.companyId)
-      .single();
-    
-    setCompanyData(company);
-
-    // Cargar plan
-    if (company?.plan) {
-      const { data: plan } = await supabase
-        .from("plans")
+      // Cargar datos de la empresa
+      const { data: company, error: companyError } = await supabase
+        .from("companies")
         .select("*")
-        .eq("id", company.plan)
+        .eq("id", companyId)
         .single();
-      setPlanData(plan);
-    }
 
-    if (tab === "dashboard") await loadDashboard(sessionData.companyId);
-    if (tab === "podologos") await loadPodologos(sessionData.companyId);
-    if (tab === "pacientes") await loadPacientes(sessionData.companyId);
-    if (tab === "agenda") await loadAgenda(sessionData.companyId);
-    if (tab === "cobros") await loadCobros(sessionData.companyId);
-    if (tab === "config") await loadConfig(sessionData.companyId);
-
-    setLoading(false);
-  };
-
-  const loadDashboard = async (companyId: string) => {
-    const today = new Date().toISOString().split("T")[0];
-    const startOfWeek = new Date(new Date().setDate(new Date().getDate() - new Date().getDay())).toISOString().split("T")[0];
-    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
-
-    // Cargar citas
-    const { data: allAppointments } = await supabase
-      .from("appointments")
-      .select("*")
-      .eq("company_id", companyId);
-
-    const citasHoy = allAppointments?.filter((a: any) => a.appointment_date === today).length || 0;
-    const citasSemana = allAppointments?.filter((a: any) => a.appointment_date >= startOfWeek).length || 0;
-    const citasMes = allAppointments?.filter((a: any) => a.appointment_date >= startOfMonth).length || 0;
-
-    // Cargar ingresos
-    const { data: paymentsData } = await supabase
-      .from("payments")
-      .select("amount")
-      .eq("company_id", companyId)
-      .eq("status", "paid")
-      .gte("created_at", startOfMonth);
-
-    const ingresosMes = paymentsData?.reduce((sum: number, p: any) => sum + Number(p.amount), 0) || 0;
-
-    // Cargar usuarios activos
-    const { data: podologosData } = await supabase
-      .from("company_users")
-      .select("user_id")
-      .eq("company_id", companyId)
-      .eq("role", "employee")
-      .eq("status", "active");
-
-    const { data: pacientesData } = await supabase
-      .from("clients")
-      .select("*")
-      .eq("company_id", companyId)
-      .eq("status", "active");
-
-    setStats({
-      citasHoy,
-      citasSemana,
-      citasMes,
-      ingresosMes,
-      pacientesActivos: pacientesData?.length || 0,
-      podologosActivos: podologosData?.length || 0,
-    });
-
-    // Alertas de límites
-    const alerts = [];
-    if (planData?.limits?.max_monthly_appointments && planData.limits.max_monthly_appointments > 0) {
-      const usage = (citasMes / planData.limits.max_monthly_appointments) * 100;
-      if (usage >= 80) {
-        alerts.push({
-          type: "warning",
-          message: `Has usado ${citasMes} de ${planData.limits.max_monthly_appointments} citas este mes (${Math.round(usage)}%)`,
-        });
+      if (companyError) {
+        console.error("Error cargando empresa:", companyError);
+        throw companyError;
       }
+
+      console.log("✅ Empresa cargada:", company);
+      setCompanyData(company);
+
+      // Cargar podólogos
+      const { data: podologosData } = await supabase
+        .from("company_users")
+        .select(`
+          user_id,
+          role,
+          status,
+          users (
+            id,
+            email,
+            full_name,
+            phone
+          )
+        `)
+        .eq("company_id", companyId)
+        .eq("role", "employee");
+
+      setPodologos((podologosData || []).map((p: any) => ({
+        id: p.user_id,
+        email: p.users.email,
+        full_name: p.users.full_name,
+        phone: p.users.phone,
+        status: p.status,
+      })));
+
+      // Cargar pacientes
+      const { data: pacientesData } = await supabase
+        .from("clients")
+        .select("*")
+        .eq("company_id", companyId);
+
+      setPacientes(pacientesData || []);
+
+      // Cargar estadísticas mock (por ahora)
+      setStats({
+        todayAppointments: 12,
+        monthRevenue: 2500000,
+        newPatients: 8,
+        occupancy: 75,
+      });
+
+      // Cargar config
+      loadConfig(company);
+
+    } catch (error) {
+      console.error("Error loading data:", error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar los datos",
+        variant: "destructive",
+      });
     }
-    setUsageAlerts(alerts);
   };
 
-  const loadPodologos = async (companyId: string) => {
-    const { data } = await supabase
-      .from("company_users")
-      .select(`
-        id,
-        role,
-        status,
-        user_id,
-        users!inner (
-          id,
-          full_name,
-          email,
-          phone,
-          is_active
-        )
-      `)
-      .eq("company_id", companyId)
-      .eq("role", "employee");
-
-    const mapped = (data || []).map((d: any) => ({
-      ...(d.users || {}),
-      status: d.status,
-      role: d.role
-    }));
-    setPodologos(mapped);
-  };
-
-  const loadPacientes = async (companyId: string) => {
-    const { data } = await supabase
-      .from("clients")
-      .select("*")
-      .eq("company_id", companyId)
-      .order("created_at", { ascending: false });
-
-    setPacientes(data || []);
-  };
-
-  const loadAgenda = async (companyId: string) => {
-    const { data } = await supabase
-      .from("appointments")
-      .select(`
-        *,
-        clients (name, phone),
-        users!appointments_assigned_to_fkey (full_name)
-      `)
-      .eq("company_id", companyId)
-      .order("scheduled_at", { ascending: false });
-
-    setAppointments(data || []);
-  };
-
-  const loadCobros = async (companyId: string) => {
-    const { data } = await supabase
-      .from("payments")
-      .select(`
-        *,
-        appointments (
-          scheduled_at
-        ),
-        clients (name)
-      `)
-      .eq("company_id", companyId)
-      .order("created_at", { ascending: false });
-
-    setPayments(data || []);
-  };
-
-  const loadConfig = async (companyId: string) => {
-    if (!companyData) return;
+  const loadConfig = (company: any) => {
+    if (!company) return;
     
     setConfigForm({
-      name: companyData.name || "",
-      phone: companyData.phone || "",
-      email: companyData.email || "",
-      address: companyData.address || "",
-      opening_hours: companyData.metadata?.opening_hours || "09:00",
-      closing_hours: companyData.metadata?.closing_hours || "18:00",
-      services: companyData.metadata?.services || [],
+      name: company.name || "",
+      phone: company.phone || "",
+      email: company.email || "",
+      address: company.address || "",
+      opening_hours: company.metadata?.opening_hours || "09:00",
+      closing_hours: company.metadata?.closing_hours || "18:00",
+      services: company.metadata?.services || [],
     });
 
     setIntegrations({
-      whatsapp_enabled: companyData.integrations?.whatsapp?.enabled || false,
-      mercadopago_enabled: companyData.integrations?.mercadopago?.enabled || false,
+      whatsapp_enabled: company.integrations?.whatsapp?.enabled || false,
+      mercadopago_enabled: company.integrations?.mercadopago?.enabled || false,
     });
   };
 
   const handleCreatePodologo = async () => {
     try {
-      const session = authService.getSession();
       if (!session?.companyId) throw new Error("No hay empresa asignada");
 
       const userId = typeof crypto !== 'undefined' && crypto.randomUUID 
@@ -366,7 +258,6 @@ export default function Admin() {
             return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); 
           });
 
-      // Insertar en users
       const { error: userError } = await supabase.from("users").insert([{
         id: userId,
         email: podologoForm.email,
@@ -377,7 +268,6 @@ export default function Admin() {
 
       if (userError) throw userError;
 
-      // Insertar en company_users
       const { error: relError } = await supabase.from("company_users").insert([{
         company_id: session.companyId,
         user_id: userId,
@@ -389,15 +279,20 @@ export default function Admin() {
 
       setPodologoDialogOpen(false);
       setPodologoForm({ full_name: "", email: "", phone: "", specialization: "", schedule: "" });
-      loadPodologos(session.companyId);
+      loadData(session.companyId);
+      
+      toast({ title: "✅ Podólogo creado exitosamente" });
     } catch (error: any) {
-      alert("Error: " + error.message);
+      toast({
+        title: "Error al crear podólogo",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
   const handleCreatePaciente = async () => {
     try {
-      const session = authService.getSession();
       if (!session?.companyId) throw new Error("No hay empresa asignada");
 
       const { error } = await supabase.from("clients").insert([{
@@ -417,15 +312,20 @@ export default function Admin() {
 
       setPacienteDialogOpen(false);
       setPacienteForm({ full_name: "", email: "", phone: "", address: "", birth_date: "", medical_conditions: "" });
-      loadPacientes(session.companyId);
+      loadData(session.companyId);
+      
+      toast({ title: "✅ Paciente creado exitosamente" });
     } catch (error: any) {
-      alert("Error: " + error.message);
+      toast({
+        title: "Error al crear paciente",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
   const handleSaveConfig = async () => {
     try {
-      const session = authService.getSession();
       if (!session?.companyId) throw new Error("No hay empresa asignada");
 
       const { error } = await supabase
@@ -450,468 +350,188 @@ export default function Admin() {
         .eq("id", session.companyId);
 
       if (error) throw error;
-      alert("Configuración guardada correctamente");
+      
+      toast({ title: "✅ Configuración guardada correctamente" });
       loadData(session.companyId);
     } catch (error: any) {
-      alert("Error: " + error.message);
+      toast({
+        title: "Error al guardar configuración",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
-      scheduled: { variant: "outline", label: "Agendada" },
-      confirmed: { variant: "default", label: "Confirmada" },
-      in_progress: { variant: "secondary", label: "En Curso" },
-      completed: { variant: "default", label: "Completada" },
-      cancelled: { variant: "destructive", label: "Cancelada" },
-      no_show: { variant: "destructive", label: "No Asistió" },
+    const badges: Record<string, { color: string; label: string }> = {
+      scheduled: { color: "bg-blue-500", label: "Agendada" },
+      confirmed: { color: "bg-green-500", label: "Confirmada" },
+      in_progress: { color: "bg-yellow-500", label: "En Progreso" },
+      completed: { color: "bg-emerald-500", label: "Completada" },
+      cancelled: { color: "bg-red-500", label: "Cancelada" },
+      no_show: { color: "bg-gray-500", label: "No Asistió" },
     };
-    const config = variants[status] || variants.scheduled;
-    return <Badge variant={config.variant}>{config.label}</Badge>;
-  };
-
-  const getPaymentBadge = (status: string) => {
-    const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string; icon: any }> = {
-      pending: { variant: "outline", label: "Pendiente", icon: AlertCircle },
-      paid: { variant: "default", label: "Pagado", icon: CheckCircle },
-      cancelled: { variant: "destructive", label: "Cancelado", icon: XCircle },
-    };
-    const config = variants[status] || variants.pending;
-    const Icon = config.icon;
-    return (
-      <Badge variant={config.variant} className="gap-1">
-        <Icon className="h-3 w-3" />
-        {config.label}
-      </Badge>
-    );
+    const badge = badges[status] || badges.scheduled;
+    return <Badge className={`${badge.color} text-white border-0`}>{badge.label}</Badge>;
   };
 
   if (!mounted || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando panel de administración...</p>
+          <p className="text-gray-600 font-medium">Cargando panel de administración...</p>
         </div>
       </div>
     );
   }
 
+  if (!session) {
+    return null;
+  }
+
   return (
-    <AdminLayout>
-      {tab === "dashboard" && (
-        <div className="space-y-6">
+    <AdminLayout activeTab={activeTab}>
+      <SEO title="Panel Admin - PodoAgenda Pro" />
+
+      {/* Dashboard Tab */}
+      {activeTab === "dashboard" && (
+        <div className="space-y-8">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-            <p className="text-slate-600">Panel de control de {companyData?.name}</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
+            <p className="text-gray-600">Vista general de {companyData?.name || "tu clínica"}</p>
           </div>
 
-          {/* Alertas */}
-          {usageAlerts.length > 0 && (
-            <div className="space-y-2">
-              {usageAlerts.map((alert, idx) => (
-                <Card key={idx} className="p-4 bg-orange-50 border-orange-200">
-                  <div className="flex items-center gap-2 text-orange-700">
-                    <AlertCircle className="h-5 w-5" />
-                    <p className="font-medium">{alert.message}</p>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {/* KPIs */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card className="p-6 bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-blue-100 text-sm font-medium">Citas Hoy</p>
-                  <p className="text-4xl font-bold mt-2">{stats.citasHoy}</p>
-                </div>
-                <Calendar className="h-12 w-12 text-blue-200" />
+          {/* KPI Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card className="p-6 bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <Calendar className="w-8 h-8 opacity-80" />
+                <Badge className="bg-white/20 text-white border-0">Hoy</Badge>
+              </div>
+              <p className="text-sm opacity-80 mb-1">Citas de Hoy</p>
+              <p className="text-4xl font-bold">{stats.todayAppointments}</p>
+              <div className="flex items-center gap-2 mt-3 text-sm opacity-80">
+                <TrendingUp className="w-4 h-4" />
+                <span>+12% vs ayer</span>
               </div>
             </Card>
 
-            <Card className="p-6 bg-gradient-to-br from-purple-500 to-purple-600 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-purple-100 text-sm font-medium">Citas Esta Semana</p>
-                  <p className="text-4xl font-bold mt-2">{stats.citasSemana}</p>
-                </div>
-                <TrendingUp className="h-12 w-12 text-purple-200" />
+            <Card className="p-6 bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <DollarSign className="w-8 h-8 opacity-80" />
+                <Badge className="bg-white/20 text-white border-0">Mes</Badge>
+              </div>
+              <p className="text-sm opacity-80 mb-1">Ingresos del Mes</p>
+              <p className="text-4xl font-bold">${(stats.monthRevenue / 1000).toFixed(0)}K</p>
+              <div className="flex items-center gap-2 mt-3 text-sm opacity-80">
+                <TrendingUp className="w-4 h-4" />
+                <span>+8% vs mes anterior</span>
               </div>
             </Card>
 
-            <Card className="p-6 bg-gradient-to-br from-green-500 to-green-600 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-green-100 text-sm font-medium">Ingresos Este Mes</p>
-                  <p className="text-4xl font-bold mt-2">${stats.ingresosMes.toLocaleString()}</p>
-                </div>
-                <DollarSign className="h-12 w-12 text-green-200" />
+            <Card className="p-6 bg-gradient-to-br from-purple-500 to-purple-600 text-white border-0 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <UserCircle className="w-8 h-8 opacity-80" />
+                <Badge className="bg-white/20 text-white border-0">Mes</Badge>
+              </div>
+              <p className="text-sm opacity-80 mb-1">Pacientes Nuevos</p>
+              <p className="text-4xl font-bold">{stats.newPatients}</p>
+              <div className="flex items-center gap-2 mt-3 text-sm opacity-80">
+                <TrendingUp className="w-4 h-4" />
+                <span>+15% vs mes anterior</span>
               </div>
             </Card>
 
-            <Card className="p-6 bg-gradient-to-br from-orange-500 to-orange-600 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-orange-100 text-sm font-medium">Citas Este Mes</p>
-                  <p className="text-4xl font-bold mt-2">{stats.citasMes}</p>
-                </div>
-                <Calendar className="h-12 w-12 text-orange-200" />
+            <Card className="p-6 bg-gradient-to-br from-orange-500 to-orange-600 text-white border-0 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <Activity className="w-8 h-8 opacity-80" />
+                <Badge className="bg-white/20 text-white border-0">Hoy</Badge>
               </div>
-            </Card>
-
-            <Card className="p-6 bg-gradient-to-br from-pink-500 to-pink-600 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-pink-100 text-sm font-medium">Pacientes Activos</p>
-                  <p className="text-4xl font-bold mt-2">{stats.pacientesActivos}</p>
-                </div>
-                <Users className="h-12 w-12 text-pink-200" />
-              </div>
-            </Card>
-
-            <Card className="p-6 bg-gradient-to-br from-indigo-500 to-indigo-600 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-indigo-100 text-sm font-medium">Podólogos Activos</p>
-                  <p className="text-4xl font-bold mt-2">{stats.podologosActivos}</p>
-                </div>
-                <Stethoscope className="h-12 w-12 text-indigo-200" />
+              <p className="text-sm opacity-80 mb-1">Ocupación</p>
+              <p className="text-4xl font-bold">{stats.occupancy}%</p>
+              <div className="flex items-center gap-2 mt-3 text-sm opacity-80">
+                <Clock className="w-4 h-4" />
+                <span>Capacidad óptima</span>
               </div>
             </Card>
           </div>
-
-          {/* Info Plan */}
-          <Card className="p-6">
-            <h2 className="text-xl font-bold text-slate-900 mb-4">Plan Actual</h2>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold text-blue-600">{planData?.name || "Free"}</p>
-                <p className="text-slate-600 mt-1">
-                  {planData?.limits?.max_monthly_appointments > 0 
-                    ? `${stats.citasMes} / ${planData.limits.max_monthly_appointments} citas este mes`
-                    : "Citas ilimitadas"}
-                </p>
-              </div>
-              <Badge variant="outline" className="text-lg px-4 py-2">
-                ${planData?.price_monthly || 0}/mes
-              </Badge>
-            </div>
-          </Card>
         </div>
       )}
 
-      {tab === "podologos" && (
+      {/* Podólogos Tab */}
+      {activeTab === "podologos" && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Podólogos</h1>
-              <p className="text-slate-600">Gestiona tu equipo de podólogos</p>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Podólogos</h1>
+              <p className="text-gray-600">Gestiona el equipo de podólogos</p>
             </div>
-            <Button onClick={() => { setPodologoDialogOpen(true); setEditingPodologo(null); }} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Nuevo Podólogo
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {podologos.map((p) => (
-              <Card key={p.id} className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
-                      {p.full_name[0]}
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900">{p.full_name}</h3>
-                      <p className="text-sm text-slate-600">Podólogo</p>
-                    </div>
+            <Dialog open={podologoDialogOpen} onOpenChange={setPodologoDialogOpen}>
+              <Button onClick={() => setPodologoDialogOpen(true)} className="gap-2">
+                <Plus className="w-5 h-5" />
+                Nuevo Podólogo
+              </Button>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Nuevo Podólogo</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div>
+                    <Label>Nombre Completo</Label>
+                    <Input
+                      value={podologoForm.full_name}
+                      onChange={(e) => setPodologoForm({ ...podologoForm, full_name: e.target.value })}
+                    />
                   </div>
-                  <Badge variant={p.is_active ? "default" : "secondary"}>
-                    {p.is_active ? "Activo" : "Inactivo"}
-                  </Badge>
-                </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <Mail className="h-4 w-4" />
-                    {p.email}
+                  <div>
+                    <Label>Email</Label>
+                    <Input
+                      type="email"
+                      value={podologoForm.email}
+                      onChange={(e) => setPodologoForm({ ...podologoForm, email: e.target.value })}
+                    />
                   </div>
-                  {p.phone && (
-                    <div className="flex items-center gap-2 text-slate-600">
-                      <Phone className="h-4 w-4" />
-                      {p.phone}
-                    </div>
-                  )}
+                  <div>
+                    <Label>Teléfono</Label>
+                    <Input
+                      value={podologoForm.phone}
+                      onChange={(e) => setPodologoForm({ ...podologoForm, phone: e.target.value })}
+                    />
+                  </div>
                 </div>
-                <div className="flex gap-2 mt-4">
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <Eye className="h-4 w-4 mr-2" />
-                    Ver
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setPodologoDialogOpen(false)}>
+                    Cancelar
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <Edit className="h-4 w-4 mr-2" />
-                    Editar
+                  <Button onClick={handleCreatePodologo}>
+                    Crear Podólogo
                   </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
-
-          <Dialog open={podologoDialogOpen} onOpenChange={setPodologoDialogOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Nuevo Podólogo</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label>Nombre Completo</Label>
-                  <Input
-                    value={podologoForm.full_name}
-                    onChange={(e) => setPodologoForm({ ...podologoForm, full_name: e.target.value })}
-                    placeholder="Ej: Dr. Juan Pérez"
-                  />
-                </div>
-                <div>
-                  <Label>Email</Label>
-                  <Input
-                    type="email"
-                    value={podologoForm.email}
-                    onChange={(e) => setPodologoForm({ ...podologoForm, email: e.target.value })}
-                    placeholder="correo@ejemplo.com"
-                  />
-                </div>
-                <div>
-                  <Label>Teléfono</Label>
-                  <Input
-                    value={podologoForm.phone}
-                    onChange={(e) => setPodologoForm({ ...podologoForm, phone: e.target.value })}
-                    placeholder="+56 9 1234 5678"
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setPodologoDialogOpen(false)}>Cancelar</Button>
-                <Button onClick={handleCreatePodologo}>Crear Podólogo</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-      )}
-
-      {tab === "pacientes" && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">Pacientes</h1>
-              <p className="text-slate-600">Gestiona tus pacientes</p>
-            </div>
-            <Button onClick={() => { setPacienteDialogOpen(true); setEditingPaciente(null); }} className="gap-2">
-              <UserPlus className="h-4 w-4" />
-              Nuevo Paciente
-            </Button>
-          </div>
-
-          <Card className="p-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400" />
-              <Input
-                value={searchPaciente}
-                onChange={(e) => setSearchPaciente(e.target.value)}
-                placeholder="Buscar paciente por nombre, email o teléfono..."
-                className="pl-10"
-              />
-            </div>
-          </Card>
-
-          <Card>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Paciente</TableHead>
-                  <TableHead>Contacto</TableHead>
-                  <TableHead>Última Visita</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pacientes
-                  .filter((p) =>
-                    searchPaciente === "" ||
-                    p.name?.toLowerCase().includes(searchPaciente.toLowerCase()) ||
-                    p.email?.toLowerCase().includes(searchPaciente.toLowerCase()) ||
-                    p.phone?.includes(searchPaciente)
-                  )
-                  .map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
-                            {p.name?.[0] || "?"}
-                          </div>
-                          <div>
-                            <p className="font-medium">{p.name}</p>
-                            <p className="text-sm text-slate-600">{p.email}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1 text-sm">
-                          <div className="flex items-center gap-2 text-slate-600">
-                            <Phone className="h-3 w-3" />
-                            {p.phone || "N/A"}
-                          </div>
-                          {(p.custom_fields as any)?.address && (
-                            <div className="flex items-center gap-2 text-slate-600">
-                              <MapPin className="h-3 w-3" />
-                              {(p.custom_fields as any).address}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-slate-600">
-                        {p.last_contact_at ? new Date(p.last_contact_at).toLocaleDateString() : "Sin visitas"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={p.status === "active" ? "default" : "secondary"}>
-                          {p.status === "active" ? "Activo" : p.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-              </TableBody>
-            </Table>
-          </Card>
-
-          <Dialog open={pacienteDialogOpen} onOpenChange={setPacienteDialogOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Nuevo Paciente</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label>Nombre Completo</Label>
-                  <Input
-                    value={pacienteForm.full_name}
-                    onChange={(e) => setPacienteForm({ ...pacienteForm, full_name: e.target.value })}
-                    placeholder="Ej: María González"
-                  />
-                </div>
-                <div>
-                  <Label>Email</Label>
-                  <Input
-                    type="email"
-                    value={pacienteForm.email}
-                    onChange={(e) => setPacienteForm({ ...pacienteForm, email: e.target.value })}
-                    placeholder="correo@ejemplo.com"
-                  />
-                </div>
-                <div>
-                  <Label>Teléfono</Label>
-                  <Input
-                    value={pacienteForm.phone}
-                    onChange={(e) => setPacienteForm({ ...pacienteForm, phone: e.target.value })}
-                    placeholder="+56 9 1234 5678"
-                  />
-                </div>
-                <div>
-                  <Label>Dirección</Label>
-                  <Input
-                    value={pacienteForm.address}
-                    onChange={(e) => setPacienteForm({ ...pacienteForm, address: e.target.value })}
-                    placeholder="Calle 123, Ciudad"
-                  />
-                </div>
-                <div>
-                  <Label>Fecha de Nacimiento</Label>
-                  <Input
-                    type="date"
-                    value={pacienteForm.birth_date}
-                    onChange={(e) => setPacienteForm({ ...pacienteForm, birth_date: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label>Condiciones Médicas</Label>
-                  <Textarea
-                    value={pacienteForm.medical_conditions}
-                    onChange={(e) => setPacienteForm({ ...pacienteForm, medical_conditions: e.target.value })}
-                    placeholder="Diabético, hipertensión, etc."
-                    rows={3}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setPacienteDialogOpen(false)}>Cancelar</Button>
-                <Button onClick={handleCreatePaciente}>Crear Paciente</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-      )}
-
-      {tab === "agenda" && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900">Agenda</h1>
-              <p className="text-slate-600">Gestiona todas las citas</p>
-            </div>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Nueva Cita
-            </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
 
           <Card>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Fecha/Hora</TableHead>
-                  <TableHead>Paciente</TableHead>
-                  <TableHead>Podólogo</TableHead>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Teléfono</TableHead>
                   <TableHead>Estado</TableHead>
-                  <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {appointments.map((apt) => (
-                  <TableRow key={apt.id}>
+                {podologos.map((podologo) => (
+                  <TableRow key={podologo.id}>
+                    <TableCell className="font-medium">{podologo.full_name}</TableCell>
+                    <TableCell>{podologo.email}</TableCell>
+                    <TableCell>{podologo.phone || "-"}</TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-slate-600" />
-                        <div>
-                          <p className="font-medium">{new Date(apt.scheduled_at).toLocaleDateString()}</p>
-                          <p className="text-sm text-slate-600">{new Date(apt.scheduled_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <p className="font-medium">{apt.clients?.name}</p>
-                      <p className="text-sm text-slate-600">{apt.clients?.phone}</p>
-                    </TableCell>
-                    <TableCell>{apt.users?.full_name}</TableCell>
-                    <TableCell>{getStatusBadge(apt.status)}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <Badge className={podologo.status === "active" ? "bg-green-500" : "bg-gray-500"}>
+                        {podologo.status === "active" ? "Activo" : "Inactivo"}
+                      </Badge>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -921,94 +541,114 @@ export default function Admin() {
         </div>
       )}
 
-      {tab === "cobros" && (
+      {/* Pacientes Tab */}
+      {activeTab === "pacientes" && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900">Cobros</h1>
-              <p className="text-slate-600">Gestiona los pagos de tu clínica</p>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Pacientes</h1>
+              <p className="text-gray-600">Gestiona los pacientes de la clínica</p>
             </div>
-            <div className="flex gap-2">
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="pending">Pendientes</SelectItem>
-                  <SelectItem value="paid">Pagados</SelectItem>
-                  <SelectItem value="cancelled">Cancelados</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button variant="outline" className="gap-2">
-                <Download className="h-4 w-4" />
-                Exportar
+            <Dialog open={pacienteDialogOpen} onOpenChange={setPacienteDialogOpen}>
+              <Button onClick={() => setPacienteDialogOpen(true)} className="gap-2">
+                <Plus className="w-5 h-5" />
+                Nuevo Paciente
               </Button>
-            </div>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Nuevo Paciente</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div>
+                    <Label>Nombre Completo</Label>
+                    <Input
+                      value={pacienteForm.full_name}
+                      onChange={(e) => setPacienteForm({ ...pacienteForm, full_name: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Email</Label>
+                    <Input
+                      type="email"
+                      value={pacienteForm.email}
+                      onChange={(e) => setPacienteForm({ ...pacienteForm, email: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Teléfono</Label>
+                    <Input
+                      value={pacienteForm.phone}
+                      onChange={(e) => setPacienteForm({ ...pacienteForm, phone: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setPacienteDialogOpen(false)}>
+                    Cancelar
+                  </Button>
+                  <Button onClick={handleCreatePaciente}>
+                    Crear Paciente
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
 
           <Card>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Paciente</TableHead>
-                  <TableHead>Monto</TableHead>
-                  <TableHead>Método</TableHead>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Teléfono</TableHead>
                   <TableHead>Estado</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {payments
-                  .filter((p) => filterStatus === "all" || p.status === filterStatus)
-                  .map((payment) => (
-                    <TableRow key={payment.id}>
-                      <TableCell>
-                        {new Date(payment.created_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        {payment.clients?.name || "N/A"}
-                      </TableCell>
-                      <TableCell className="font-bold text-slate-900">
-                        ${Number(payment.amount).toLocaleString()}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{payment.payment_method || "Efectivo"}</Badge>
-                      </TableCell>
-                      <TableCell>{getPaymentBadge(payment.status)}</TableCell>
-                    </TableRow>
-                  ))}
+                {pacientes.map((paciente) => (
+                  <TableRow key={paciente.id}>
+                    <TableCell className="font-medium">{paciente.name}</TableCell>
+                    <TableCell>{paciente.email}</TableCell>
+                    <TableCell>{paciente.phone || "-"}</TableCell>
+                    <TableCell>
+                      <Badge className={paciente.status === "active" ? "bg-green-500" : "bg-gray-500"}>
+                        {paciente.status === "active" ? "Activo" : "Inactivo"}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </Card>
         </div>
       )}
 
-      {tab === "config" && (
+      {/* Configuración Tab */}
+      {activeTab === "configuracion" && (
         <div className="space-y-6">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Configuración</h1>
-            <p className="text-slate-600">Configura tu clínica</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Configuración</h1>
+            <p className="text-gray-600">Ajustes de la clínica</p>
           </div>
 
           <Card className="p-6">
-            <h2 className="text-xl font-bold text-slate-900 mb-4">Datos de la Clínica</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Nombre de la Clínica</Label>
-                <Input
-                  value={configForm.name}
-                  onChange={(e) => setConfigForm({ ...configForm, name: e.target.value })}
-                  placeholder="Mi Clínica Podológica"
-                />
-              </div>
-              <div>
-                <Label>Teléfono</Label>
-                <Input
-                  value={configForm.phone}
-                  onChange={(e) => setConfigForm({ ...configForm, phone: e.target.value })}
-                  placeholder="+56 9 1234 5678"
-                />
+            <h3 className="text-lg font-semibold mb-4">Información de la Clínica</h3>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Nombre</Label>
+                  <Input
+                    value={configForm.name}
+                    onChange={(e) => setConfigForm({ ...configForm, name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>Teléfono</Label>
+                  <Input
+                    value={configForm.phone}
+                    onChange={(e) => setConfigForm({ ...configForm, phone: e.target.value })}
+                  />
+                </div>
               </div>
               <div>
                 <Label>Email</Label>
@@ -1016,7 +656,6 @@ export default function Admin() {
                   type="email"
                   value={configForm.email}
                   onChange={(e) => setConfigForm({ ...configForm, email: e.target.value })}
-                  placeholder="contacto@clinica.com"
                 />
               </div>
               <div>
@@ -1024,70 +663,15 @@ export default function Admin() {
                 <Input
                   value={configForm.address}
                   onChange={(e) => setConfigForm({ ...configForm, address: e.target.value })}
-                  placeholder="Av. Principal 123"
                 />
               </div>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <h2 className="text-xl font-bold text-slate-900 mb-4">Horarios de Atención</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label>Hora de Apertura</Label>
-                <Input
-                  type="time"
-                  value={configForm.opening_hours}
-                  onChange={(e) => setConfigForm({ ...configForm, opening_hours: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label>Hora de Cierre</Label>
-                <Input
-                  type="time"
-                  value={configForm.closing_hours}
-                  onChange={(e) => setConfigForm({ ...configForm, closing_hours: e.target.value })}
-                />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <h2 className="text-xl font-bold text-slate-900 mb-4">Integraciones</h2>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <h3 className="font-bold text-slate-900">WhatsApp</h3>
-                  <p className="text-sm text-slate-600">Envía notificaciones por WhatsApp</p>
-                </div>
-                <Button
-                  variant={integrations.whatsapp_enabled ? "default" : "outline"}
-                  onClick={() => setIntegrations({ ...integrations, whatsapp_enabled: !integrations.whatsapp_enabled })}
-                >
-                  {integrations.whatsapp_enabled ? "Activado" : "Desactivado"}
-                </Button>
-              </div>
-              <div className="flex items-center justify-between p-4 border rounded-lg">
-                <div>
-                  <h3 className="font-bold text-slate-900">Mercado Pago</h3>
-                  <p className="text-sm text-slate-600">Acepta pagos online</p>
-                </div>
-                <Button
-                  variant={integrations.mercadopago_enabled ? "default" : "outline"}
-                  onClick={() => setIntegrations({ ...integrations, mercadopago_enabled: !integrations.mercadopago_enabled })}
-                >
-                  {integrations.mercadopago_enabled ? "Activado" : "Desactivado"}
+              <div className="flex justify-end">
+                <Button onClick={handleSaveConfig}>
+                  Guardar Configuración
                 </Button>
               </div>
             </div>
           </Card>
-
-          <div className="flex justify-end">
-            <Button onClick={handleSaveConfig} className="gap-2">
-              <CheckCircle className="h-4 w-4" />
-              Guardar Configuración
-            </Button>
-          </div>
         </div>
       )}
     </AdminLayout>
