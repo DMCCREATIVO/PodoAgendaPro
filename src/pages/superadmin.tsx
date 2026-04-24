@@ -438,48 +438,22 @@ export default function SuperAdmin() {
       if (companyError) throw companyError;
       console.log("✅ Empresa creada:", company.id);
 
-      const userId = typeof crypto !== 'undefined' && crypto.randomUUID 
-        ? crypto.randomUUID() 
-        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { 
-            const r = Math.random() * 16 | 0; 
-            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); 
-          });
-
-      console.log("👤 Creando usuario owner...");
-      // SIMPLE: role y company_id directamente en users
-      const { data: adminUser, error: userError } = await supabase
-        .from("users")
-        .insert([{
-          id: userId,
-          email: companyForm.admin_email,
-          full_name: companyForm.admin_name,
-          role: 'owner', // ← DIRECTO
-          company_id: company.id, // ← DIRECTO
-          is_active: true,
-          is_superadmin: false,
-        }])
-        .select()
-        .single();
-
-      if (userError) {
-        console.error("❌ Error creando usuario:", userError);
-        await supabase.from("companies").delete().eq("id", company.id);
-        throw userError;
-      }
-
-      console.log("✅ Usuario owner creado con role y company_id:", adminUser.id);
-
-      // Insertar en company_users para consistencia multi-tenant
-      const { error: relError } = await supabase.from("company_users").insert([{
-        company_id: company.id,
-        user_id: adminUser.id,
+      console.log("👤 Creando usuario owner via API...");
+      const createResult = await authService.createUser({
+        email: companyForm.admin_email,
+        password: adminPassword,
+        full_name: companyForm.admin_name,
         role: "owner",
-        status: "active"
-      }]);
+        company_id: company.id,
+      });
 
-      if (relError) {
-        console.warn("⚠️ Error creando relación company_users (no crítico):", relError.message);
+      if (!createResult.success) {
+        console.error("❌ Error creando usuario:", createResult.error);
+        await supabase.from("companies").delete().eq("id", company.id);
+        throw new Error(createResult.error || "Error creando usuario owner");
       }
+
+      console.log("✅ Usuario owner creado:", createResult.userId);
 
       setGeneratedCredentials({
         email: companyForm.admin_email,
@@ -651,50 +625,28 @@ export default function SuperAdmin() {
         return;
       }
 
-      console.log("👤 [SIMPLE] Creando usuario...");
+      console.log("👤 Creando usuario via API...");
 
       const finalPassword = userForm.password || generatePassword();
-      const userId = typeof crypto !== 'undefined' && crypto.randomUUID 
-        ? crypto.randomUUID() 
-        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { 
-            const r = Math.random() * 16 | 0; 
-            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); 
-          });
 
-      // SIMPLE: Todo en una sola inserción
-      const { error: userError } = await supabase.from("users").insert([{
-        id: userId,
+      const createResult = await authService.createUser({
         email: userForm.email,
+        password: finalPassword,
         full_name: userForm.full_name,
-        phone: userForm.phone || null,
-        role: userForm.role, // ← DIRECTO
-        company_id: userForm.role === "superadmin" ? null : userForm.company_id, // ← DIRECTO
+        role: userForm.role,
+        company_id: userForm.role === "superadmin" ? undefined : userForm.company_id,
+        phone: userForm.phone || undefined,
         is_superadmin: userForm.role === "superadmin",
-        is_active: true,
-      }]);
+      });
 
-      if (userError) {
-        console.error("❌ Error:", userError);
+      if (!createResult.success) {
+        console.error("❌ Error:", createResult.error);
         toast({
           title: "Error al crear usuario",
-          description: userError.message,
+          description: createResult.error || "No se pudo crear el usuario",
           variant: "destructive",
         });
         return;
-      }
-
-      // Insertar en company_users para usuarios no-superadmin
-      if (userForm.role !== "superadmin" && userForm.company_id) {
-        const { error: relError } = await supabase.from("company_users").insert([{
-          company_id: userForm.company_id,
-          user_id: userId,
-          role: userForm.role,
-          status: "active"
-        }]);
-
-        if (relError) {
-          console.warn("⚠️ Error creando relación company_users:", relError.message);
-        }
       }
 
       console.log("✅ Usuario creado con role:", userForm.role);

@@ -359,41 +359,34 @@ export default function Admin() {
       const session = authService.getSession();
       if (!session?.companyId) throw new Error("No hay empresa asignada");
 
-      const userId = typeof crypto !== 'undefined' && crypto.randomUUID 
-        ? crypto.randomUUID() 
-        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { 
-            const r = Math.random() * 16 | 0; 
-            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); 
-          });
-
-      // Insertar en users con role y company_id
-      const { error: userError } = await supabase.from("users").insert([{
-        id: userId,
+      // Crear usuario via API (Supabase Auth + users + company_users)
+      const tempPassword = Math.random().toString(36).slice(-8) + "A1!";
+      const createResult = await authService.createUser({
         email: podologoForm.email,
+        password: tempPassword,
         full_name: podologoForm.full_name,
-        phone: podologoForm.phone,
         role: "employee",
         company_id: session.companyId,
-        is_active: true,
-      }]);
+        phone: podologoForm.phone || undefined,
+      });
 
-      if (userError) throw userError;
-
-      // Insertar en company_users
-      const { error: relError } = await supabase.from("company_users").insert([{
-        company_id: session.companyId,
-        user_id: userId,
-        role: "employee",
-        status: "active"
-      }]);
-
-      if (relError) throw relError;
+      if (!createResult.success) {
+        throw new Error(createResult.error || "Error creando podólogo");
+      }
 
       setPodologoDialogOpen(false);
       setPodologoForm({ full_name: "", email: "", phone: "", specialization: "", schedule: "" });
       loadPodologos(session.companyId);
+      toast({
+        title: "Podólogo creado",
+        description: `Contraseña temporal: ${tempPassword}`,
+      });
     } catch (error: any) {
-      alert("Error: " + error.message);
+      toast({
+        title: "Error al crear podólogo",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
