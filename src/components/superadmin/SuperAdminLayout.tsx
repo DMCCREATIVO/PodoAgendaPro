@@ -30,11 +30,12 @@ export function SuperAdminLayout({ children, activeTab }: SuperAdminLayoutProps)
   };
 
   const navItems = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, href: "/superadmin" },
-    { id: "empresas", label: "Empresas", icon: Building2, href: "/superadmin?tab=empresas" },
-    { id: "usuarios", label: "Usuarios", icon: Users, href: "/superadmin?tab=usuarios" },
-    { id: "personalizacion", label: "Personalización", icon: Palette, href: "/superadmin?tab=personalizacion" },
-    { id: "configuracion", label: "Configuración", icon: Settings, href: "/superadmin?tab=configuracion" },
+    { name: "Dashboard", icon: LayoutDashboard, path: "/superadmin" },
+    { name: "Empresas", icon: Building2, path: "/superadmin?tab=empresas" },
+    { name: "Usuarios", icon: Users, path: "/superadmin?tab=usuarios" },
+    { name: "Integraciones", icon: Settings, path: "/superadmin?tab=integraciones" },
+    { name: "Personalización Landing", icon: Palette, path: "/superadmin-landing" },
+    { name: "Configuración", icon: Settings, path: "/superadmin?tab=configuracion" },
   ];
 
   return (
