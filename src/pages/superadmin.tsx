@@ -46,6 +46,7 @@ import {
   CreditCard,
   Webhook,
   Save,
+  Pencil,
 } from "lucide-react";
 
 // Tipos
@@ -182,14 +183,62 @@ export default function SuperAdmin() {
       
       setCompanies(companiesData || []);
 
-      // Cargar usuarios - CORREGIDO para mostrar todos
+      // Cargar usuarios CON sus roles y empresas
       const { data: usersData } = await supabase
         .from("users")
-        .select("*")
+        .select(`
+          *,
+          company_users (
+            role,
+            status,
+            company_id,
+            companies (
+              id,
+              name,
+              slug
+            )
+          )
+        `)
         .order("created_at", { ascending: false });
       
-      console.log("👥 Usuarios cargados:", usersData);
-      setUsers(usersData || []);
+      console.log("👥 Usuarios cargados con roles:", usersData);
+      
+      // Transformar datos para la tabla
+      const transformedUsers = (usersData || []).map((user: any) => {
+        // Si es superadmin
+        if (user.is_superadmin) {
+          return {
+            ...user,
+            role: "superadmin",
+            company_name: "Sistema",
+            company_id: null,
+            cu_status: "active"
+          };
+        }
+        
+        // Si tiene company_users (puede tener múltiples)
+        if (user.company_users && user.company_users.length > 0) {
+          const firstCompany = user.company_users[0];
+          return {
+            ...user,
+            role: firstCompany.role,
+            company_name: firstCompany.companies?.name || "Sin empresa",
+            company_id: firstCompany.company_id,
+            cu_status: firstCompany.status
+          };
+        }
+        
+        // Usuario sin empresa asignada
+        return {
+          ...user,
+          role: "sin_asignar",
+          company_name: "Sin empresa",
+          company_id: null,
+          cu_status: "inactive"
+        };
+      });
+      
+      setUsers(transformedUsers);
 
       // Cargar planes
       const { data: plansData } = await supabase
@@ -256,7 +305,7 @@ export default function SuperAdmin() {
       // Calcular estadísticas
       setStats({
         totalCompanies: companiesData?.length || 0,
-        totalUsers: usersData?.length || 0,
+        totalUsers: transformedUsers?.length || 0,
         activeCompanies: companiesData?.filter((c: any) => c.is_active && c.plan_status === 'active').length || 0,
         monthlyRevenue: companiesData?.reduce((sum: number, c: any) => {
           const plan = plansData?.find((p: any) => p.id === c.plan);
@@ -569,7 +618,15 @@ export default function SuperAdmin() {
 
   const handleCreateUser = async () => {
     try {
-      const password = userForm.password || generatePassword();
+      if (!userForm.email || !userForm.full_name) {
+        alert("Email y nombre son requeridos");
+        return;
+      }
+
+      // Generar password si no se proporcionó
+      const finalPassword = userForm.password || generatePassword();
+      
+      // Generar UUID para el nuevo usuario
       const userId = typeof crypto !== 'undefined' && crypto.randomUUID 
         ? crypto.randomUUID() 
         : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { 
@@ -577,58 +634,136 @@ export default function SuperAdmin() {
             return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); 
           });
 
-      const { data: userData, error: userError } = await supabase
+      // 1. Insertar en users
+      const { error: userError } = await supabase.from("users").insert([{
+        id: userId,
+        email: userForm.email,
+        full_name: userForm.full_name,
+        phone: userForm.phone || null,
+        is_superadmin: userForm.role === "superadmin",
+        is_active: true,
+      }]);
+
+      if (userError) {
+        console.error("Error creando usuario:", userError);
+        alert("Error al crear usuario: " + userError.message);
+        return;
+      }
+
+      // 2. Si NO es superadmin, insertar en company_users
+      if (userForm.role !== "superadmin" && userForm.company_id) {
+        const { error: companyUserError } = await supabase.from("company_users").insert([{
+          user_id: userId,
+          company_id: userForm.company_id,
+          role: userForm.role, // owner | admin | employee
+          status: "active",
+        }]);
+
+        if (companyUserError) {
+          console.error("Error asignando usuario a empresa:", companyUserError);
+          // Eliminar usuario creado si falla la asignación
+          await supabase.from("users").delete().eq("id", userId);
+          alert("Error al asignar usuario a empresa: " + companyUserError.message);
+          return;
+        }
+      }
+
+      // 3. Mostrar credenciales generadas
+      setGeneratedCredentials({
+        email: userForm.email,
+        password: finalPassword,
+        role: userForm.role,
+        company: companies.find(c => c.id === userForm.company_id)?.name || "Sistema",
+      });
+      setCredentialsModalOpen(true);
+
+      // 4. Limpiar form y recargar
+      setUserDialogOpen(false);
+      setUserForm({ email: "", full_name: "", phone: "", password: "", role: "employee", company_id: "" });
+      loadData();
+
+      alert("✅ Usuario creado exitosamente");
+    } catch (error: any) {
+      console.error("Error en handleCreateUser:", error);
+      alert("Error: " + error.message);
+    }
+  };
+
+  const handleEditUser = (user: any) => {
+    setEditingUser(user);
+    setUserForm({
+      email: user.email,
+      full_name: user.full_name || "",
+      phone: user.phone || "",
+      password: "",
+      role: user.role || "employee",
+      company_id: user.company_id || "",
+    });
+    setUserDialogOpen(true);
+  };
+
+  const handleUpdateUser = async () => {
+    try {
+      if (!editingUser) return;
+
+      // 1. Actualizar datos en users
+      const { error: userError } = await supabase
         .from("users")
-        .insert([{
-          id: userId,
-          email: userForm.email,
+        .update({
           full_name: userForm.full_name,
-          is_active: true,
-          created_by: session?.userId,
-        }])
-        .select()
-        .single();
+          phone: userForm.phone || null,
+          is_superadmin: userForm.role === "superadmin",
+        })
+        .eq("id", editingUser.id);
 
       if (userError) throw userError;
 
-      if (userForm.company_id && userForm.role !== "patient") {
-        const { error: relationError } = await supabase
+      // 2. Si cambió el rol o la empresa, actualizar company_users
+      if (userForm.role !== "superadmin") {
+        // Verificar si ya existe en company_users
+        const { data: existingCU } = await supabase
           .from("company_users")
-          .insert([{
-            user_id: userData.id,
-            company_id: userForm.company_id,
-            role: userForm.role,
-          }]);
+          .select("*")
+          .eq("user_id", editingUser.id)
+          .eq("company_id", userForm.company_id)
+          .single();
 
-        if (relationError) throw relationError;
+        if (existingCU) {
+          // Actualizar registro existente
+          const { error: updateError } = await supabase
+            .from("company_users")
+            .update({
+              role: userForm.role,
+              status: "active",
+            })
+            .eq("user_id", editingUser.id)
+            .eq("company_id", userForm.company_id);
+
+          if (updateError) throw updateError;
+        } else {
+          // Crear nuevo registro si cambió de empresa
+          const { error: insertError } = await supabase
+            .from("company_users")
+            .insert([{
+              user_id: editingUser.id,
+              company_id: userForm.company_id,
+              role: userForm.role,
+              status: "active",
+            }]);
+
+          if (insertError) throw insertError;
+        }
       }
 
-      const company = companies.find(c => c.id === userForm.company_id);
-
-      setGeneratedCredentials({
-        email: userForm.email,
-        password: password,
-        companyName: company?.name,
-        companySlug: company?.slug,
-      });
-
-      toast({ title: "✅ Usuario creado exitosamente" });
       setUserDialogOpen(false);
-      setCredentialsDialogOpen(true);
-      setUserForm({
-        email: "",
-        full_name: "",
-        password: "",
-        role: "patient",
-        company_id: "",
-      });
+      setEditingUser(null);
+      setUserForm({ email: "", full_name: "", phone: "", password: "", role: "employee", company_id: "" });
       loadData();
+
+      alert("✅ Usuario actualizado exitosamente");
     } catch (error: any) {
-      toast({
-        title: "Error al crear usuario",
-        description: error.message,
-        variant: "destructive",
-      });
+      console.error("Error actualizando usuario:", error);
+      alert("Error: " + error.message);
     }
   };
 
@@ -1547,18 +1682,24 @@ export default function SuperAdmin() {
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Gestión de Usuarios</h1>
               <p className="text-gray-600">Administra todos los usuarios del sistema</p>
             </div>
-            <Dialog open={userDialogOpen} onOpenChange={setUserDialogOpen}>
+            <Dialog open={userDialogOpen} onOpenChange={(open) => {
+              setUserDialogOpen(open);
+              if (!open) {
+                setEditingUser(null);
+                setUserForm({ email: "", full_name: "", phone: "", password: "", role: "employee", company_id: "" });
+              }
+            }}>
               <DialogTrigger asChild>
                 <Button className="gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
                   <Plus className="w-5 h-5" />
                   Nuevo Usuario
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-md">
                 <DialogHeader>
-                  <DialogTitle>Nuevo Usuario</DialogTitle>
+                  <DialogTitle>{editingUser ? "Editar Usuario" : "Nuevo Usuario"}</DialogTitle>
                   <DialogDescription>
-                    Complete los datos del usuario
+                    {editingUser ? "Modifica los datos del usuario" : "Complete los datos del usuario"}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
@@ -1570,6 +1711,7 @@ export default function SuperAdmin() {
                       value={userForm.email}
                       onChange={(e) => setUserForm({ ...userForm, email: e.target.value })}
                       placeholder="usuario@email.com"
+                      disabled={!!editingUser}
                     />
                   </div>
                   <div>
@@ -1582,23 +1724,34 @@ export default function SuperAdmin() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="user_password">Contraseña (dejar vacío para generar automática)</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="user_password"
-                        type="text"
-                        value={userForm.password}
-                        onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
-                        placeholder="Se generará automáticamente"
-                      />
-                      <Button
-                        variant="outline"
-                        onClick={() => setUserForm({ ...userForm, password: generatePassword() })}
-                      >
-                        Generar
-                      </Button>
-                    </div>
+                    <Label htmlFor="user_phone">Teléfono</Label>
+                    <Input
+                      id="user_phone"
+                      value={userForm.phone}
+                      onChange={(e) => setUserForm({ ...userForm, phone: e.target.value })}
+                      placeholder="+56 9 1234 5678"
+                    />
                   </div>
+                  {!editingUser && (
+                    <div>
+                      <Label htmlFor="user_password">Contraseña (dejar vacío para generar automática)</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="user_password"
+                          type="text"
+                          value={userForm.password}
+                          onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                          placeholder="Se generará automáticamente"
+                        />
+                        <Button
+                          variant="outline"
+                          onClick={() => setUserForm({ ...userForm, password: generatePassword() })}
+                        >
+                          Generar
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                   <div>
                     <Label htmlFor="user_role">Rol *</Label>
                     <Select value={userForm.role} onValueChange={(value: any) => setUserForm({ ...userForm, role: value })}>
@@ -1606,13 +1759,14 @@ export default function SuperAdmin() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="patient">Paciente</SelectItem>
-                        <SelectItem value="employee">Podólogo</SelectItem>
-                        <SelectItem value="owner">Administrador</SelectItem>
+                        <SelectItem value="superadmin">SuperAdmin (Sistema)</SelectItem>
+                        <SelectItem value="owner">Owner (Dueño de Empresa)</SelectItem>
+                        <SelectItem value="admin">Admin (Administrador)</SelectItem>
+                        <SelectItem value="employee">Employee (Podólogo)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                  {userForm.role !== "patient" && (
+                  {userForm.role !== "superadmin" && (
                     <div>
                       <Label htmlFor="user_company">Empresa *</Label>
                       <Select value={userForm.company_id} onValueChange={(value) => setUserForm({ ...userForm, company_id: value })}>
@@ -1631,11 +1785,15 @@ export default function SuperAdmin() {
                   )}
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setUserDialogOpen(false)}>
+                  <Button variant="outline" onClick={() => {
+                    setUserDialogOpen(false);
+                    setEditingUser(null);
+                    setUserForm({ email: "", full_name: "", phone: "", password: "", role: "employee", company_id: "" });
+                  }}>
                     Cancelar
                   </Button>
-                  <Button onClick={handleCreateUser}>
-                    Crear Usuario
+                  <Button onClick={editingUser ? handleUpdateUser : handleCreateUser}>
+                    {editingUser ? "Actualizar Usuario" : "Crear Usuario"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -1651,43 +1809,67 @@ export default function SuperAdmin() {
                   <TableHead>Rol</TableHead>
                   <TableHead>Empresa</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((user) => {
-                  // Buscar company_users para este usuario
-                  const userCompanies = companies.filter(c => {
-                    // Aquí deberíamos buscar en company_users pero por ahora mostramos info básica
-                    return false;
-                  });
-
-                  return (
-                    <TableRow key={user.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
-                            {user.full_name?.charAt(0) || user.email.charAt(0).toUpperCase()}
-                          </div>
-                          <p className="font-medium">{user.full_name || "Sin nombre"}</p>
+                {users.map((user: any) => (
+                  <TableRow key={user.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
+                          {user.full_name?.charAt(0) || user.email.charAt(0).toUpperCase()}
                         </div>
-                      </TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>
-                        <Badge variant={user.is_superadmin ? "default" : "secondary"}>
-                          {user.is_superadmin ? "SuperAdmin" : "Usuario"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-gray-600">-</span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={user.is_active ? "default" : "secondary"} className={user.is_active ? "bg-green-500" : "bg-gray-500"}>
-                          {user.is_active ? "Activo" : "Inactivo"}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                        <p className="font-medium">{user.full_name || "Sin nombre"}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={
+                          user.role === "superadmin" ? "destructive" :
+                          user.role === "owner" ? "default" :
+                          user.role === "admin" ? "secondary" :
+                          user.role === "employee" ? "outline" :
+                          "secondary"
+                        }
+                        className={
+                          user.role === "superadmin" ? "bg-purple-600" :
+                          user.role === "owner" ? "bg-blue-600" :
+                          user.role === "admin" ? "bg-green-600" :
+                          user.role === "employee" ? "bg-orange-600" :
+                          "bg-gray-500"
+                        }
+                      >
+                        {user.role === "superadmin" ? "SuperAdmin" :
+                         user.role === "owner" ? "Owner" :
+                         user.role === "admin" ? "Admin" :
+                         user.role === "employee" ? "Podólogo" :
+                         "Sin Asignar"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-gray-600">{user.company_name || "-"}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant={user.is_active ? "default" : "secondary"} 
+                        className={user.is_active ? "bg-green-500" : "bg-gray-500"}
+                      >
+                        {user.is_active ? "Activo" : "Inactivo"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditUser(user)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </Card>
