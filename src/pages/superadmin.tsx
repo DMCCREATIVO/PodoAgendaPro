@@ -93,7 +93,7 @@ export default function SuperAdmin() {
     primary_color: "#2563EB",
     secondary_color: "#8B5CF6",
     logo_url: "",
-    plan: "free" as "free" | "pro" | "enterprise",
+    plan: "ba9cb6da-f5a2-400d-a0b4-8d885564f62e", // Free plan ID
     admin_email: "",
     admin_name: "",
     admin_password: "",
@@ -152,10 +152,10 @@ export default function SuperAdmin() {
       setPlans((plansData || []).map((p: any) => ({
         id: p.id,
         name: p.name,
-        price_monthly: p.price_monthly || 0,
-        max_users: p.limits?.max_users || (p.id === 'free' ? 5 : p.id === 'pro' ? 20 : -1),
-        max_podiatrists: p.limits?.max_podiatrists || (p.id === 'free' ? 1 : p.id === 'pro' ? 5 : -1),
-        max_monthly_appointments: p.limits?.max_monthly_appointments || (p.id === 'free' ? 50 : p.id === 'pro' ? 500 : -1),
+        price_monthly: parseFloat(p.price_monthly) || 0,
+        max_users: p.limits?.max_users || -1,
+        max_podiatrists: p.limits?.max_podiatrists || -1,
+        max_monthly_appointments: p.limits?.max_monthly_appointments || -1,
         features: Array.isArray(p.features) ? p.features : [],
       })));
 
@@ -166,7 +166,7 @@ export default function SuperAdmin() {
         activeCompanies: companiesData?.filter((c: any) => c.is_active && c.plan_status === 'active').length || 0,
         monthlyRevenue: companiesData?.reduce((sum: number, c: any) => {
           const plan = plansData?.find((p: any) => p.id === c.plan);
-          return sum + (plan?.price_monthly || 0);
+          return sum + (parseFloat(plan?.price_monthly) || 0);
         }, 0) || 0,
       });
     } catch (error) {
@@ -283,7 +283,7 @@ export default function SuperAdmin() {
         primary_color: "#2563EB",
         secondary_color: "#8B5CF6",
         logo_url: "",
-        plan: "free",
+        plan: "ba9cb6da-f5a2-400d-a0b4-8d885564f62e",
         admin_email: "",
         admin_name: "",
         admin_password: "",
@@ -458,17 +458,23 @@ export default function SuperAdmin() {
   };
 
   const getPlanBadge = (planId: string) => {
-    const badges = {
-      free: { icon: Crown, color: "bg-gray-500", label: "Gratuito" },
-      pro: { icon: Zap, color: "bg-blue-500", label: "Pro" },
-      enterprise: { icon: Rocket, color: "bg-purple-500", label: "Enterprise" }
+    const plan = plans.find(p => p.id === planId);
+    if (!plan) return <Badge className="bg-gray-500 text-white border-0">Sin plan</Badge>;
+
+    const badges: Record<string, { icon: any; color: string }> = {
+      "Free": { icon: Crown, color: "bg-gray-500" },
+      "Starter": { icon: Zap, color: "bg-blue-500" },
+      "Pro": { icon: Zap, color: "bg-purple-500" },
+      "Enterprise": { icon: Rocket, color: "bg-gradient-to-r from-purple-600 to-blue-600" }
     };
-    const badge = badges[planId as keyof typeof badges] || badges.free;
+
+    const badge = badges[plan.name] || { icon: Crown, color: "bg-gray-500" };
     const Icon = badge.icon;
+
     return (
       <Badge className={`${badge.color} text-white border-0`}>
         <Icon className="w-3 h-3 mr-1" />
-        {badge.label}
+        {plan.name}
       </Badge>
     );
   };
@@ -971,7 +977,7 @@ export default function SuperAdmin() {
                               logo_url: company.logo_url || "",
                               primary_color: (company.metadata as any)?.primary_color || "#2563EB",
                               secondary_color: (company.metadata as any)?.secondary_color || "#8B5CF6",
-                              plan: company.plan || "free",
+                              plan: company.plan || "ba9cb6da-f5a2-400d-a0b4-8d885564f62e",
                               admin_email: "",
                               admin_name: "",
                               admin_password: "",
@@ -1210,7 +1216,7 @@ export default function SuperAdmin() {
                         logo_url: company.logo_url || "",
                         primary_color: (company.metadata as any)?.primary_color || "#2563EB",
                         secondary_color: (company.metadata as any)?.secondary_color || "#8B5CF6",
-                        plan: company.plan || "free",
+                        plan: company.plan || "ba9cb6da-f5a2-400d-a0b4-8d885564f62e",
                         admin_email: "",
                         admin_name: "",
                         admin_password: "",
