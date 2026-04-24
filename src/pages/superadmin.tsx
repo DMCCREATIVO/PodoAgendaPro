@@ -122,9 +122,22 @@ export default function SuperAdmin() {
 
   const handleCreateCompany = async () => {
     try {
+      const companyData = {
+        name: companyForm.name,
+        slug: companyForm.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.floor(Math.random() * 10000),
+        email: companyForm.email,
+        phone: companyForm.phone,
+        address: companyForm.address,
+        logo_url: companyForm.logo_url,
+        metadata: {
+          primary_color: companyForm.primary_color,
+          secondary_color: companyForm.secondary_color
+        }
+      };
+
       const { error } = await supabase
         .from("companies")
-        .insert([companyForm]);
+        .insert([companyData]);
 
       if (error) throw error;
 
@@ -151,9 +164,22 @@ export default function SuperAdmin() {
 
   const handleUpdateCompany = async () => {
     try {
+      const companyData = {
+        name: companyForm.name,
+        email: companyForm.email,
+        phone: companyForm.phone,
+        address: companyForm.address,
+        logo_url: companyForm.logo_url,
+        metadata: {
+          ...(editingCompany?.metadata || {}),
+          primary_color: companyForm.primary_color,
+          secondary_color: companyForm.secondary_color
+        }
+      };
+
       const { error } = await supabase
         .from("companies")
-        .update(companyForm)
+        .update(companyData)
         .eq("id", editingCompany.id);
 
       if (error) throw error;
@@ -195,10 +221,19 @@ export default function SuperAdmin() {
 
   const handleCreateUser = async () => {
     try {
+      // Helper for generating UUID if not available
+      const newId = typeof crypto !== 'undefined' && crypto.randomUUID 
+        ? crypto.randomUUID() 
+        : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { 
+            const r = Math.random() * 16 | 0; 
+            return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); 
+          });
+
       // Crear usuario
       const { data: userData, error: userError } = await supabase
         .from("users")
         .insert([{
+          id: newId,
           email: userForm.email,
           full_name: userForm.full_name,
         }])
@@ -479,7 +514,7 @@ export default function SuperAdmin() {
                       <div className="flex items-center gap-3">
                         <div 
                           className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold"
-                          style={{ background: `linear-gradient(135deg, ${company.primary_color}, ${company.secondary_color})` }}
+                          style={{ background: `linear-gradient(135deg, ${(company.metadata as any)?.primary_color || '#2563EB'}, ${(company.metadata as any)?.secondary_color || '#8B5CF6'})` }}
                         >
                           {company.name.charAt(0)}
                         </div>
@@ -495,8 +530,8 @@ export default function SuperAdmin() {
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
-                        <div className="w-8 h-8 rounded-lg border-2 border-gray-200" style={{ backgroundColor: company.primary_color }} />
-                        <div className="w-8 h-8 rounded-lg border-2 border-gray-200" style={{ backgroundColor: company.secondary_color }} />
+                        <div className="w-8 h-8 rounded-lg border-2 border-gray-200" style={{ backgroundColor: (company.metadata as any)?.primary_color || '#2563EB' }} />
+                        <div className="w-8 h-8 rounded-lg border-2 border-gray-200" style={{ backgroundColor: (company.metadata as any)?.secondary_color || '#8B5CF6' }} />
                       </div>
                     </TableCell>
                     <TableCell>
@@ -511,7 +546,15 @@ export default function SuperAdmin() {
                           variant="ghost"
                           onClick={() => {
                             setEditingCompany(company);
-                            setCompanyForm(company);
+                            setCompanyForm({
+                              name: company.name || "",
+                              email: company.email || "",
+                              phone: company.phone || "",
+                              address: company.address || "",
+                              logo_url: company.logo_url || "",
+                              primary_color: (company.metadata as any)?.primary_color || "#2563EB",
+                              secondary_color: (company.metadata as any)?.secondary_color || "#8B5CF6",
+                            });
                             setCompanyDialogOpen(true);
                           }}
                         >
@@ -687,7 +730,7 @@ export default function SuperAdmin() {
                   <div className="flex items-center gap-4 mb-4">
                     <div 
                       className="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg"
-                      style={{ background: `linear-gradient(135deg, ${company.primary_color}, ${company.secondary_color})` }}
+                      style={{ background: `linear-gradient(135deg, ${(company.metadata as any)?.primary_color || '#2563EB'}, ${(company.metadata as any)?.secondary_color || '#8B5CF6'})` }}
                     >
                       {company.name.charAt(0)}
                     </div>
@@ -699,17 +742,17 @@ export default function SuperAdmin() {
 
                   <div className="space-y-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl shadow-md" style={{ backgroundColor: company.primary_color }} />
+                      <div className="w-12 h-12 rounded-xl shadow-md" style={{ backgroundColor: (company.metadata as any)?.primary_color || '#2563EB' }} />
                       <div>
                         <p className="text-sm font-medium">Color Primario</p>
-                        <p className="text-xs text-gray-600">{company.primary_color}</p>
+                        <p className="text-xs text-gray-600">{(company.metadata as any)?.primary_color || '#2563EB'}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl shadow-md" style={{ backgroundColor: company.secondary_color }} />
+                      <div className="w-12 h-12 rounded-xl shadow-md" style={{ backgroundColor: (company.metadata as any)?.secondary_color || '#8B5CF6' }} />
                       <div>
                         <p className="text-sm font-medium">Color Secundario</p>
-                        <p className="text-xs text-gray-600">{company.secondary_color}</p>
+                        <p className="text-xs text-gray-600">{(company.metadata as any)?.secondary_color || '#8B5CF6'}</p>
                       </div>
                     </div>
                   </div>
@@ -719,7 +762,15 @@ export default function SuperAdmin() {
                     variant="outline"
                     onClick={() => {
                       setEditingCompany(company);
-                      setCompanyForm(company);
+                      setCompanyForm({
+                        name: company.name || "",
+                        email: company.email || "",
+                        phone: company.phone || "",
+                        address: company.address || "",
+                        logo_url: company.logo_url || "",
+                        primary_color: (company.metadata as any)?.primary_color || "#2563EB",
+                        secondary_color: (company.metadata as any)?.secondary_color || "#8B5CF6",
+                      });
                       setCompanyDialogOpen(true);
                     }}
                   >
