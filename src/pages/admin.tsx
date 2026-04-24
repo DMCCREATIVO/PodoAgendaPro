@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { authService } from "@/services/auth";
 import { 
   Calendar, 
   Users, 
@@ -354,6 +356,9 @@ export default function Admin() {
 
   const handleCreatePodologo = async () => {
     try {
+      const session = authService.getSession();
+      if (!session?.companyId) throw new Error("No hay empresa asignada");
+
       const userId = typeof crypto !== 'undefined' && crypto.randomUUID 
         ? crypto.randomUUID() 
         : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { 
@@ -392,6 +397,9 @@ export default function Admin() {
 
   const handleCreatePaciente = async () => {
     try {
+      const session = authService.getSession();
+      if (!session?.companyId) throw new Error("No hay empresa asignada");
+
       const { error } = await supabase.from("clients").insert([{
         name: pacienteForm.full_name,
         email: pacienteForm.email,
@@ -417,6 +425,9 @@ export default function Admin() {
 
   const handleSaveConfig = async () => {
     try {
+      const session = authService.getSession();
+      if (!session?.companyId) throw new Error("No hay empresa asignada");
+
       const { error } = await supabase
         .from("companies")
         .update({
@@ -440,7 +451,7 @@ export default function Admin() {
 
       if (error) throw error;
       alert("Configuración guardada correctamente");
-      loadData();
+      loadData(session.companyId);
     } catch (error: any) {
       alert("Error: " + error.message);
     }
