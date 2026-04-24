@@ -42,6 +42,8 @@ position: 8
 - [x] Implementar guards de rutas
 - [x] Configurar usuarios demo
 - [x] Validar que login funciona para todos los roles
+- [x] Solucionar error de hidratación (client-side rendering)
+- [x] Configurar políticas RLS correctamente
 - [ ] Desarrollar Panel SuperAdmin completo
 - [ ] Desarrollar Panel Admin completo
 - [ ] Desarrollar Panel Podólogo (CORE clínico)
@@ -53,3 +55,4 @@ position: 8
 - Sistema redirige correctamente según el rol
 - Paneles están protegidos (requieren autenticación)
 - Diseño moderno y profesional en todas las pantallas
+- Sin errores de hidratación o runtime
