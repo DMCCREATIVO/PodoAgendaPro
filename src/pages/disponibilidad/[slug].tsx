@@ -110,19 +110,21 @@ export default function PodologistAvailability() {
         return;
       }
 
+      const pData = podologistData as any;
+
       setPodologist({
-        id: podologistData.users.id,
-        name: podologistData.users.full_name,
-        email: podologistData.users.email,
-        role: podologistData.role,
-        company_id: podologistData.company_id
+        id: pData.users.id,
+        name: pData.users.full_name,
+        email: pData.users.email,
+        role: pData.role,
+        company_id: pData.company_id
       });
 
       // Load company
       const { data: companyData } = await supabase
         .from("companies")
         .select("id, name, slug, logo_url, metadata")
-        .eq("id", podologistData.company_id)
+        .eq("id", pData.company_id)
         .single();
 
       if (companyData) {
@@ -133,7 +135,7 @@ export default function PodologistAvailability() {
       const { data: servicesData } = await supabase
         .from("services")
         .select("id, name, description, duration_minutes, price")
-        .eq("company_id", podologistData.company_id)
+        .eq("company_id", pData.company_id)
         .eq("is_active", true)
         .order("name");
 
