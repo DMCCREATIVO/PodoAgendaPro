@@ -149,7 +149,15 @@ export default function SuperAdmin() {
         .eq("is_active", true)
         .order("price_monthly", { ascending: true });
       
-      setPlans(plansData || []);
+      setPlans((plansData || []).map((p: any) => ({
+        id: p.id,
+        name: p.name,
+        price_monthly: p.price_monthly || 0,
+        max_users: p.limits?.max_users || (p.id === 'free' ? 5 : p.id === 'pro' ? 20 : -1),
+        max_podiatrists: p.limits?.max_podiatrists || (p.id === 'free' ? 1 : p.id === 'pro' ? 5 : -1),
+        max_monthly_appointments: p.limits?.max_monthly_appointments || (p.id === 'free' ? 50 : p.id === 'pro' ? 500 : -1),
+        features: Array.isArray(p.features) ? p.features : [],
+      })));
 
       // Calcular estadísticas
       setStats({
