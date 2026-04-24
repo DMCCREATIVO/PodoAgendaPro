@@ -175,6 +175,8 @@ export default function SuperAdmin() {
     
     setSession(currentSession);
     setLoading(false);
+    
+    // Cargar datos inmediatamente
     loadData();
   }, [router]);
 
