@@ -82,7 +82,10 @@ position: 8
 - [x] ATENCIÓN CLÍNICA - Ficha podológica completa (10 campos)
 - [x] Sistema de cobro integrado
 - [x] Mis Pacientes con búsqueda
-- [ ] Desarrollar Portal Paciente (Mis Citas, Historial, Pagos)
+- [x] Desarrollar Portal Paciente (Mis Citas, Historial, Pagos)
+- [x] Mis Citas con cancelación (regla 2h)
+- [x] Historial Clínico (solo info permitida + nota de privacidad)
+- [x] Mis Pagos con estados y descarga
 - [ ] Crear Landing Pública (Hero, Servicios, Podólogos, Testimonios)
 - [ ] Construir Sistema de Reservas (Stepper 5 pasos)
 - [ ] Página Disponibilidad por Podólogo (Marketing + Agenda)
