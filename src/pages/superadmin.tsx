@@ -100,6 +100,8 @@ export default function SuperAdmin() {
     password: string;
     companyName?: string;
     companySlug?: string;
+    role?: string;
+    company?: string;
   } | null>(null);
 
   // Form states
@@ -133,8 +135,9 @@ export default function SuperAdmin() {
   const [userForm, setUserForm] = useState({
     email: "",
     full_name: "",
+    phone: "",
     password: "",
-    role: "patient" as "patient" | "owner" | "employee",
+    role: "employee",
     company_id: "",
   });
 
@@ -675,7 +678,7 @@ export default function SuperAdmin() {
         role: userForm.role,
         company: companies.find(c => c.id === userForm.company_id)?.name || "Sistema",
       });
-      setCredentialsModalOpen(true);
+      setCredentialsDialogOpen(true);
 
       // 4. Limpiar form y recargar
       setUserDialogOpen(false);
