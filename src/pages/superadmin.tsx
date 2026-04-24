@@ -180,7 +180,7 @@ export default function SuperAdmin() {
 
   const loadData = async () => {
     try {
-      console.log("🔄 [SIMPLE] Cargando datos del SuperAdmin...");
+      console.log("🔄 [DEBUG] Iniciando loadData...");
       
       // Cargar empresas
       const { data: companiesData, error: companiesError } = await supabase
@@ -188,10 +188,14 @@ export default function SuperAdmin() {
         .select("*")
         .order("created_at", { ascending: false });
       
+      console.log("📊 [DEBUG] Empresas query result:", {
+        data: companiesData,
+        error: companiesError,
+        count: companiesData?.length || 0
+      });
+      
       if (companiesError) {
-        console.error("❌ Error cargando empresas:", companiesError);
-      } else {
-        console.log("✅ Empresas cargadas:", companiesData?.length || 0);
+        console.error("❌ [ERROR] Error cargando empresas:", companiesError);
       }
       
       setCompanies(companiesData || []);
@@ -209,12 +213,16 @@ export default function SuperAdmin() {
         `)
         .order("created_at", { ascending: false });
       
+      console.log("👥 [DEBUG] Usuarios query result:", {
+        data: usersData,
+        error: usersError,
+        count: usersData?.length || 0
+      });
+      
       if (usersError) {
-        console.error("❌ Error cargando usuarios:", usersError);
+        console.error("❌ [ERROR] Error cargando usuarios:", usersError);
         setUsers([]);
       } else {
-        console.log("✅ Usuarios cargados:", usersData?.length || 0);
-        
         // Transformar para la tabla
         const transformedUsers = (usersData || []).map((user: any) => ({
           ...user,
@@ -223,16 +231,22 @@ export default function SuperAdmin() {
           cu_status: user.is_active ? 'active' : 'inactive'
         }));
         
-        console.log("✅ Usuarios transformados:", transformedUsers);
+        console.log("✅ [DEBUG] Usuarios transformados:", transformedUsers);
         setUsers(transformedUsers);
       }
 
       // Cargar planes
-      const { data: plansData } = await supabase
+      const { data: plansData, error: plansError } = await supabase
         .from("plans")
         .select("*")
         .eq("is_active", true)
         .order("price_monthly", { ascending: true });
+      
+      console.log("💎 [DEBUG] Planes query result:", {
+        data: plansData,
+        error: plansError,
+        count: plansData?.length || 0
+      });
       
       setPlans((plansData || []).map((p: any) => ({
         id: p.id,
@@ -282,13 +296,13 @@ export default function SuperAdmin() {
           ...prev,
           stripe_enabled: settings.stripe.enabled || false,
           stripe_public_key: settings.stripe.public_key || "",
-          stripe_secret_key: settings.stripe.secret_key || "",
+          stripe_secret_key: settings.secret_key || "",
           stripe_mode: settings.stripe.mode || "test",
         }));
       }
 
       // Calcular estadísticas
-      const stats = {
+      const calculatedStats = {
         totalCompanies: companiesData?.length || 0,
         totalUsers: usersData?.length || 0,
         activeCompanies: companiesData?.filter((c: any) => c.is_active && c.plan_status === 'active').length || 0,
@@ -298,12 +312,12 @@ export default function SuperAdmin() {
         }, 0) || 0,
       };
       
-      console.log("✅ Stats calculados:", stats);
-      setStats(stats);
+      console.log("📈 [DEBUG] Estadísticas calculadas:", calculatedStats);
+      setStats(calculatedStats);
 
-      console.log("✅ LoadData completado");
+      console.log("✅ [DEBUG] LoadData completado exitosamente");
     } catch (error) {
-      console.error("💥 Error en loadData:", error);
+      console.error("💥 [ERROR] Error crítico en loadData:", error);
     }
   };
 
@@ -1002,13 +1016,35 @@ export default function SuperAdmin() {
         </DialogContent>
       </Dialog>
 
-      {/* Dashboard Tab - MEJORADO */}
+      {/* Dashboard Tab - MEJORADO CON DEBUG */}
       {activeTabId === "dashboard" && (
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard SuperAdmin</h1>
             <p className="text-gray-600">Vista general del sistema</p>
+            {/* DEBUG INFO */}
+            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded text-xs">
+              <p className="font-mono">
+                DEBUG: Empresas={companies.length} | Usuarios={users.length} | Stats=(C:{stats.totalCompanies}, U:{stats.totalUsers})
+              </p>
+            </div>
           </div>
+
+          {/* Mostrar mensaje si no hay datos */}
+          {stats.totalCompanies === 0 && stats.totalUsers === 0 && (
+            <Card className="p-8 text-center">
+              <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                No se encontraron datos
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Abre la consola del navegador (F12) para ver los detalles del error
+              </p>
+              <Button onClick={loadData}>
+                Recargar Datos
+              </Button>
+            </Card>
+          )}
 
           {/* KPI Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
