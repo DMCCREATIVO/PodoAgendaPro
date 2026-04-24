@@ -183,13 +183,14 @@ export default function AdminPanel() {
       .from("company_users")
       .select("user_id")
       .eq("company_id", companyId)
-      .eq("role", "employee");
+      .eq("role", "employee")
+      .eq("status", "active");
 
     const { data: pacientesData } = await supabase
       .from("clients")
       .select("*")
       .eq("company_id", companyId)
-      .eq("is_active", true);
+      .eq("status", "active");
 
     setStats({
       citasHoy,
@@ -218,14 +219,27 @@ export default function AdminPanel() {
     const { data } = await supabase
       .from("company_users")
       .select(`
+        id,
         role,
-        is_active,
-        users (*)
+        status,
+        user_id,
+        users!inner (
+          id,
+          full_name,
+          email,
+          phone,
+          is_active
+        )
       `)
       .eq("company_id", companyId)
       .eq("role", "employee");
 
-    setPodologos(data?.map(d => ({ ...d.users, is_active: d.is_active })) || []);
+    const mapped = (data || []).map((d: any) => ({
+      ...(d.users || {}),
+      status: d.status,
+      role: d.role
+    }));
+    setPodologos(mapped);
   };
 
   const loadPacientes = async (companyId: string) => {
@@ -243,12 +257,11 @@ export default function AdminPanel() {
       .from("appointments")
       .select(`
         *,
-        clients (full_name, phone),
+        clients (name, phone),
         users!appointments_assigned_to_fkey (full_name)
       `)
       .eq("company_id", companyId)
-      .order("appointment_date", { ascending: false })
-      .order("start_time", { ascending: true });
+      .order("scheduled_at", { ascending: false });
 
     setAppointments(data || []);
   };
@@ -259,9 +272,9 @@ export default function AdminPanel() {
       .select(`
         *,
         appointments (
-          appointment_date,
-          clients (full_name)
-        )
+          scheduled_at
+        ),
+        clients (name)
       `)
       .eq("company_id", companyId)
       .order("created_at", { ascending: false });
@@ -313,7 +326,7 @@ export default function AdminPanel() {
         company_id: session.companyId,
         user_id: userId,
         role: "employee",
-        is_active: true
+        status: "active"
       }]);
 
       if (relError) throw relError;
@@ -329,13 +342,16 @@ export default function AdminPanel() {
   const handleCreatePaciente = async () => {
     try {
       const { error } = await supabase.from("clients").insert([{
-        full_name: pacienteForm.full_name,
+        name: pacienteForm.full_name,
         email: pacienteForm.email,
         phone: pacienteForm.phone,
-        address: pacienteForm.address,
-        date_of_birth: pacienteForm.birth_date,
         company_id: session.companyId,
-        is_active: true,
+        status: "active",
+        notes: pacienteForm.medical_conditions,
+        custom_fields: {
+          address: pacienteForm.address,
+          date_of_birth: pacienteForm.birth_date
+        }
       }]);
 
       if (error) throw error;
@@ -661,7 +677,7 @@ export default function AdminPanel() {
                 {pacientes
                   .filter((p) =>
                     searchPaciente === "" ||
-                    p.full_name?.toLowerCase().includes(searchPaciente.toLowerCase()) ||
+                    p.name?.toLowerCase().includes(searchPaciente.toLowerCase()) ||
                     p.email?.toLowerCase().includes(searchPaciente.toLowerCase()) ||
                     p.phone?.includes(searchPaciente)
                   )
@@ -670,10 +686,10 @@ export default function AdminPanel() {
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
-                            {p.full_name?.[0] || "?"}
+                            {p.name?.[0] || "?"}
                           </div>
                           <div>
-                            <p className="font-medium">{p.full_name}</p>
+                            <p className="font-medium">{p.name}</p>
                             <p className="text-sm text-slate-600">{p.email}</p>
                           </div>
                         </div>
@@ -684,20 +700,20 @@ export default function AdminPanel() {
                             <Phone className="h-3 w-3" />
                             {p.phone || "N/A"}
                           </div>
-                          {p.address && (
+                          {(p.custom_fields as any)?.address && (
                             <div className="flex items-center gap-2 text-slate-600">
                               <MapPin className="h-3 w-3" />
-                              {p.address}
+                              {(p.custom_fields as any).address}
                             </div>
                           )}
                         </div>
                       </TableCell>
                       <TableCell className="text-slate-600">
-                        {p.last_visit ? new Date(p.last_visit).toLocaleDateString() : "Sin visitas"}
+                        {p.last_contact_at ? new Date(p.last_contact_at).toLocaleDateString() : "Sin visitas"}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={p.is_active ? "default" : "secondary"}>
-                          {p.is_active ? "Activo" : "Inactivo"}
+                        <Badge variant={p.status === "active" ? "default" : "secondary"}>
+                          {p.status === "active" ? "Activo" : p.status}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -813,13 +829,13 @@ export default function AdminPanel() {
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-slate-600" />
                         <div>
-                          <p className="font-medium">{new Date(apt.appointment_date).toLocaleDateString()}</p>
-                          <p className="text-sm text-slate-600">{apt.start_time}</p>
+                          <p className="font-medium">{new Date(apt.scheduled_at).toLocaleDateString()}</p>
+                          <p className="text-sm text-slate-600">{new Date(apt.scheduled_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <p className="font-medium">{apt.clients?.full_name}</p>
+                      <p className="font-medium">{apt.clients?.name}</p>
                       <p className="text-sm text-slate-600">{apt.clients?.phone}</p>
                     </TableCell>
                     <TableCell>{apt.users?.full_name}</TableCell>
@@ -888,7 +904,7 @@ export default function AdminPanel() {
                         {new Date(payment.created_at).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        {payment.appointments?.clients?.full_name || "N/A"}
+                        {payment.clients?.name || "N/A"}
                       </TableCell>
                       <TableCell className="font-bold text-slate-900">
                         ${Number(payment.amount).toLocaleString()}
