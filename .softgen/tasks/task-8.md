@@ -86,7 +86,14 @@ position: 8
 - [x] Mis Citas con cancelación (regla 2h)
 - [x] Historial Clínico (solo info permitida + nota de privacidad)
 - [x] Mis Pagos con estados y descarga
-- [ ] Crear Landing Pública (Hero, Servicios, Podólogos, Testimonios)
+- [x] Crear Landing Pública (Hero, Servicios, Podólogos, Testimonios)
+- [x] Hero con gradientes y CTAs
+- [x] Servicios en cards glassmorphism
+- [x] Podólogos destacados
+- [x] Beneficios en grid
+- [x] Testimonios con estrellas
+- [x] CTA final con gradiente
+- [x] Footer completo
 - [ ] Construir Sistema de Reservas (Stepper 5 pasos)
 - [ ] Página Disponibilidad por Podólogo (Marketing + Agenda)
 
