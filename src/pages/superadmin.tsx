@@ -48,20 +48,7 @@ import {
   Save,
   Pencil,
   Building,
-  UserCog,
-  Crown,
-  Zap,
-  Rocket,
-  AlertCircle,
-  Clock,
-  Upload,
-  Key,
-  Infinity,
-  MessageSquare,
-  CreditCard,
-  Webhook,
-  Save,
-  Pencil,
+  UserCog
 } from "lucide-react";
 
 // Tipos
@@ -1230,7 +1217,7 @@ export default function SuperAdmin() {
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  onClick={() => setActiveTabId('empresas')}
+                  onClick={() => router.push({ query: { tab: 'empresas' } })}
                 >
                   Ver todas →
                 </Button>
@@ -1271,7 +1258,7 @@ export default function SuperAdmin() {
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  onClick={() => setActiveTabId('usuarios')}
+                  onClick={() => router.push({ query: { tab: 'usuarios' } })}
                 >
                   Ver todos →
                 </Button>
@@ -1295,21 +1282,24 @@ export default function SuperAdmin() {
                       variant={
                         user.role === "superadmin" ? "destructive" :
                         user.role === "owner" ? "default" :
+                        user.role === "admin" ? "secondary" :
                         user.role === "employee" ? "outline" :
                         "secondary"
                       }
                       className={
                         user.role === "superadmin" ? "bg-purple-600" :
                         user.role === "owner" ? "bg-blue-600" :
+                        user.role === "admin" ? "bg-green-600" :
                         user.role === "employee" ? "bg-orange-600" :
                         "bg-gray-500"
                       }
                     >
                       {user.role === "superadmin" ? "SuperAdmin" :
                        user.role === "owner" ? "Owner" :
-                       user.role === "employee" ? "Podólogo" :
                        user.role === "admin" ? "Admin" :
-                       "Paciente"}
+                       user.role === "employee" ? "Podólogo" :
+                       user.role === "patient" ? "Paciente" :
+                       "Sin Asignar"}
                     </Badge>
                   </div>
                 ))}
@@ -1440,29 +1430,6 @@ export default function SuperAdmin() {
                         onChange={(e) => setCompanyForm({ ...companyForm, address: e.target.value })}
                         placeholder="Av. Principal 123"
                       />
-                    </div>
-
-                    <div>
-                      <Label>Logo</Label>
-                      <div className="flex items-center gap-4 mt-2">
-                        {companyForm.logo_url && (
-                          <img src={companyForm.logo_url} alt="Logo" className="w-20 h-20 rounded-xl object-cover border-2" />
-                        )}
-                        <div className="flex-1">
-                          <Input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleLogoUpload}
-                            disabled={uploadingLogo}
-                            className="mb-2"
-                          />
-                          <Input
-                            placeholder="O ingresa URL del logo"
-                            value={companyForm.logo_url}
-                            onChange={(e) => setCompanyForm({ ...companyForm, logo_url: e.target.value })}
-                          />
-                        </div>
-                      </div>
                     </div>
 
                     {!editingCompany && (
@@ -1763,7 +1730,7 @@ export default function SuperAdmin() {
                 {companies.map((company) => (
                   <TableRow key={company.id}>
                     <TableCell>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-start gap-3">
                         {company.logo_url ? (
                           <img src={company.logo_url} alt={company.name} className="w-12 h-12 rounded-xl object-cover shadow-lg" />
                         ) : (
@@ -1774,7 +1741,7 @@ export default function SuperAdmin() {
                             {company.name.charAt(0)}
                           </div>
                         )}
-                        <div>
+                        <div className="flex-1">
                           <p className="font-semibold">{company.name}</p>
                           <p className="text-sm text-gray-600">{company.email}</p>
                         </div>
