@@ -413,11 +413,14 @@ export type Database = {
           address: string | null
           country_code: string | null
           created_at: string | null
+          custom_limits: Json | null
+          custom_plan: boolean | null
           default_admin_password: string | null
           deleted_at: string | null
           email: string | null
           id: string
           industry: string | null
+          integrations: Json | null
           is_active: boolean | null
           logo_url: string | null
           max_monthly_appointments: number | null
@@ -445,11 +448,14 @@ export type Database = {
           address?: string | null
           country_code?: string | null
           created_at?: string | null
+          custom_limits?: Json | null
+          custom_plan?: boolean | null
           default_admin_password?: string | null
           deleted_at?: string | null
           email?: string | null
           id?: string
           industry?: string | null
+          integrations?: Json | null
           is_active?: boolean | null
           logo_url?: string | null
           max_monthly_appointments?: number | null
@@ -477,11 +483,14 @@ export type Database = {
           address?: string | null
           country_code?: string | null
           created_at?: string | null
+          custom_limits?: Json | null
+          custom_plan?: boolean | null
           default_admin_password?: string | null
           deleted_at?: string | null
           email?: string | null
           id?: string
           industry?: string | null
+          integrations?: Json | null
           is_active?: boolean | null
           logo_url?: string | null
           max_monthly_appointments?: number | null
@@ -626,6 +635,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      global_settings: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          key: string
+          updated_at: string | null
+          value: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          key: string
+          updated_at?: string | null
+          value?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          key?: string
+          updated_at?: string | null
+          value?: Json | null
+        }
+        Relationships: []
       }
       modules: {
         Row: {

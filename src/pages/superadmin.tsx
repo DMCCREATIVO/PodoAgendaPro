@@ -13,6 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -37,6 +39,13 @@ import {
   Rocket,
   AlertCircle,
   Clock,
+  Upload,
+  Key,
+  Infinity,
+  MessageSquare,
+  CreditCard,
+  Webhook,
+  Save,
 } from "lucide-react";
 
 // Tipos
@@ -48,6 +57,12 @@ interface Plan {
   max_podiatrists: number;
   max_monthly_appointments: number;
   features: string[];
+}
+
+interface GlobalSetting {
+  key: string;
+  value: any;
+  description: string;
 }
 
 export default function SuperAdmin() {
@@ -62,6 +77,7 @@ export default function SuperAdmin() {
   const [companies, setCompanies] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [globalSettings, setGlobalSettings] = useState<Record<string, any>>({});
   const [stats, setStats] = useState({
     totalCompanies: 0,
     totalUsers: 0,
@@ -73,9 +89,11 @@ export default function SuperAdmin() {
   const [companyDialogOpen, setCompanyDialogOpen] = useState(false);
   const [userDialogOpen, setUserDialogOpen] = useState(false);
   const [credentialsDialogOpen, setCredentialsDialogOpen] = useState(false);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState<any>(null);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [generatedCredentials, setGeneratedCredentials] = useState<{
     email: string;
     password: string;
@@ -93,10 +111,22 @@ export default function SuperAdmin() {
     primary_color: "#2563EB",
     secondary_color: "#8B5CF6",
     logo_url: "",
-    plan: "ba9cb6da-f5a2-400d-a0b4-8d885564f62e", // Free plan ID
+    plan: "",
+    custom_plan: false,
+    max_users: -1,
+    max_podiatrists: -1,
+    max_monthly_appointments: -1,
     admin_email: "",
     admin_name: "",
     admin_password: "",
+    // Integraciones
+    whatsapp_enabled: false,
+    whatsapp_instance: "",
+    whatsapp_use_global: true,
+    mercadopago_enabled: false,
+    mercadopago_public_key: "",
+    mercadopago_access_token: "",
+    mercadopago_use_global: true,
   });
 
   const [userForm, setUserForm] = useState({
@@ -105,6 +135,27 @@ export default function SuperAdmin() {
     password: "",
     role: "patient" as "patient" | "owner" | "employee",
     company_id: "",
+  });
+
+  const [passwordForm, setPasswordForm] = useState({
+    company_id: "",
+    new_password: "",
+  });
+
+  // Global settings states
+  const [settingsForm, setSettingsForm] = useState({
+    whatsapp_enabled: false,
+    whatsapp_server_url: "",
+    whatsapp_default_instance: "",
+    whatsapp_api_token: "",
+    mercadopago_enabled: false,
+    mercadopago_public_key: "",
+    mercadopago_access_token: "",
+    mercadopago_mode: "sandbox",
+    stripe_enabled: false,
+    stripe_public_key: "",
+    stripe_secret_key: "",
+    stripe_mode: "test",
   });
 
   useEffect(() => {
@@ -159,6 +210,51 @@ export default function SuperAdmin() {
         features: Array.isArray(p.features) ? p.features : [],
       })));
 
+      // Set default plan (Free)
+      if (plansData && plansData.length > 0 && !companyForm.plan) {
+        setCompanyForm(prev => ({ ...prev, plan: plansData[0].id }));
+      }
+
+      // Cargar configuraciones globales
+      const { data: settingsData } = await supabase
+        .from("global_settings")
+        .select("*");
+      
+      const settings: Record<string, any> = {};
+      (settingsData || []).forEach((s: any) => {
+        settings[s.key] = s.value;
+      });
+      setGlobalSettings(settings);
+
+      // Mapear a settingsForm
+      if (settings.whatsapp) {
+        setSettingsForm(prev => ({
+          ...prev,
+          whatsapp_enabled: settings.whatsapp.enabled || false,
+          whatsapp_server_url: settings.whatsapp.server_url || "",
+          whatsapp_default_instance: settings.whatsapp.default_instance || "",
+          whatsapp_api_token: settings.whatsapp.api_token || "",
+        }));
+      }
+      if (settings.mercadopago) {
+        setSettingsForm(prev => ({
+          ...prev,
+          mercadopago_enabled: settings.mercadopago.enabled || false,
+          mercadopago_public_key: settings.mercadopago.public_key || "",
+          mercadopago_access_token: settings.mercadopago.access_token || "",
+          mercadopago_mode: settings.mercadopago.mode || "sandbox",
+        }));
+      }
+      if (settings.stripe) {
+        setSettingsForm(prev => ({
+          ...prev,
+          stripe_enabled: settings.stripe.enabled || false,
+          stripe_public_key: settings.stripe.public_key || "",
+          stripe_secret_key: settings.stripe.secret_key || "",
+          stripe_mode: settings.stripe.mode || "test",
+        }));
+      }
+
       // Calcular estadísticas
       setStats({
         totalCompanies: companiesData?.length || 0,
@@ -192,16 +288,58 @@ export default function SuperAdmin() {
     return password;
   };
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingLogo(true);
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('company-logos')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('company-logos')
+        .getPublicUrl(filePath);
+
+      setCompanyForm({ ...companyForm, logo_url: data.publicUrl });
+      toast({ title: "✅ Logo subido exitosamente" });
+    } catch (error: any) {
+      toast({
+        title: "Error al subir logo",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
   const handleCreateCompany = async () => {
     try {
-      // Generar slug si está vacío
       const slug = companyForm.slug || generateSlug(companyForm.name);
-      
-      // Generar contraseña para el admin si está vacía
       const adminPassword = companyForm.admin_password || generatePassword();
 
-      // Obtener límites del plan seleccionado
-      const selectedPlan = plans.find(p => p.id === companyForm.plan);
+      // Determinar límites
+      let max_users, max_podiatrists, max_monthly_appointments;
+      
+      if (companyForm.custom_plan) {
+        max_users = companyForm.max_users;
+        max_podiatrists = companyForm.max_podiatrists;
+        max_monthly_appointments = companyForm.max_monthly_appointments;
+      } else {
+        const selectedPlan = plans.find(p => p.id === companyForm.plan);
+        max_users = selectedPlan?.max_users || 5;
+        max_podiatrists = selectedPlan?.max_podiatrists || 1;
+        max_monthly_appointments = selectedPlan?.max_monthly_appointments || 50;
+      }
 
       const companyData = {
         name: companyForm.name,
@@ -210,15 +348,29 @@ export default function SuperAdmin() {
         phone: companyForm.phone,
         address: companyForm.address,
         logo_url: companyForm.logo_url,
-        plan: companyForm.plan,
+        plan: companyForm.custom_plan ? null : companyForm.plan,
+        custom_plan: companyForm.custom_plan,
         plan_status: 'trial',
-        max_users: selectedPlan?.max_users || 5,
-        max_podiatrists: selectedPlan?.max_podiatrists || 1,
-        max_monthly_appointments: selectedPlan?.max_monthly_appointments || 50,
+        max_users,
+        max_podiatrists,
+        max_monthly_appointments,
         default_admin_password: adminPassword,
         metadata: {
           primary_color: companyForm.primary_color,
           secondary_color: companyForm.secondary_color
+        },
+        integrations: {
+          whatsapp: {
+            enabled: companyForm.whatsapp_enabled,
+            instance_name: companyForm.whatsapp_instance,
+            use_global: companyForm.whatsapp_use_global
+          },
+          mercadopago: {
+            enabled: companyForm.mercadopago_enabled,
+            public_key: companyForm.mercadopago_public_key,
+            access_token: companyForm.mercadopago_access_token,
+            use_global: companyForm.mercadopago_use_global
+          }
         }
       };
 
@@ -230,7 +382,6 @@ export default function SuperAdmin() {
 
       if (companyError) throw companyError;
 
-      // Generar ID único
       const userId = typeof crypto !== 'undefined' && crypto.randomUUID 
         ? crypto.randomUUID() 
         : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { 
@@ -238,7 +389,6 @@ export default function SuperAdmin() {
             return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); 
           });
 
-      // Crear usuario admin de la empresa
       const { data: adminUser, error: userError } = await supabase
         .from("users")
         .insert([{
@@ -253,7 +403,6 @@ export default function SuperAdmin() {
 
       if (userError) throw userError;
 
-      // Crear relación company_users
       const { error: relationError } = await supabase
         .from("company_users")
         .insert([{
@@ -264,7 +413,6 @@ export default function SuperAdmin() {
 
       if (relationError) throw relationError;
 
-      // Guardar credenciales generadas
       setGeneratedCredentials({
         email: companyForm.admin_email,
         password: adminPassword,
@@ -275,20 +423,7 @@ export default function SuperAdmin() {
       toast({ title: "✅ Empresa creada exitosamente" });
       setCompanyDialogOpen(false);
       setCredentialsDialogOpen(true);
-      setCompanyForm({
-        name: "",
-        slug: "",
-        email: "",
-        phone: "",
-        address: "",
-        primary_color: "#2563EB",
-        secondary_color: "#8B5CF6",
-        logo_url: "",
-        plan: "ba9cb6da-f5a2-400d-a0b4-8d885564f62e",
-        admin_email: "",
-        admin_name: "",
-        admin_password: "",
-      });
+      resetCompanyForm();
       loadData();
     } catch (error: any) {
       toast({
@@ -301,7 +436,18 @@ export default function SuperAdmin() {
 
   const handleUpdateCompany = async () => {
     try {
-      const selectedPlan = plans.find(p => p.id === companyForm.plan);
+      let max_users, max_podiatrists, max_monthly_appointments;
+      
+      if (companyForm.custom_plan) {
+        max_users = companyForm.max_users;
+        max_podiatrists = companyForm.max_podiatrists;
+        max_monthly_appointments = companyForm.max_monthly_appointments;
+      } else {
+        const selectedPlan = plans.find(p => p.id === companyForm.plan);
+        max_users = selectedPlan?.max_users || editingCompany.max_users;
+        max_podiatrists = selectedPlan?.max_podiatrists || editingCompany.max_podiatrists;
+        max_monthly_appointments = selectedPlan?.max_monthly_appointments || editingCompany.max_monthly_appointments;
+      }
 
       const companyData = {
         name: companyForm.name,
@@ -310,14 +456,28 @@ export default function SuperAdmin() {
         phone: companyForm.phone,
         address: companyForm.address,
         logo_url: companyForm.logo_url,
-        plan: companyForm.plan,
-        max_users: selectedPlan?.max_users || editingCompany.max_users,
-        max_podiatrists: selectedPlan?.max_podiatrists || editingCompany.max_podiatrists,
-        max_monthly_appointments: selectedPlan?.max_monthly_appointments || editingCompany.max_monthly_appointments,
+        plan: companyForm.custom_plan ? null : companyForm.plan,
+        custom_plan: companyForm.custom_plan,
+        max_users,
+        max_podiatrists,
+        max_monthly_appointments,
         metadata: {
           ...(editingCompany?.metadata || {}),
           primary_color: companyForm.primary_color,
           secondary_color: companyForm.secondary_color
+        },
+        integrations: {
+          whatsapp: {
+            enabled: companyForm.whatsapp_enabled,
+            instance_name: companyForm.whatsapp_instance,
+            use_global: companyForm.whatsapp_use_global
+          },
+          mercadopago: {
+            enabled: companyForm.mercadopago_enabled,
+            public_key: companyForm.mercadopago_public_key,
+            access_token: companyForm.mercadopago_access_token,
+            use_global: companyForm.mercadopago_use_global
+          }
         }
       };
 
@@ -335,6 +495,28 @@ export default function SuperAdmin() {
     } catch (error: any) {
       toast({
         title: "Error al actualizar empresa",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    try {
+      const { error } = await supabase
+        .from("companies")
+        .update({ default_admin_password: passwordForm.new_password })
+        .eq("id", passwordForm.company_id);
+
+      if (error) throw error;
+
+      toast({ title: "✅ Contraseña actualizada" });
+      setPasswordDialogOpen(false);
+      setPasswordForm({ company_id: "", new_password: "" });
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error al actualizar contraseña",
         description: error.message,
         variant: "destructive",
       });
@@ -452,12 +634,101 @@ export default function SuperAdmin() {
     }
   };
 
+  const handleSaveGlobalSettings = async () => {
+    try {
+      // WhatsApp
+      await supabase
+        .from("global_settings")
+        .upsert({
+          key: 'whatsapp',
+          value: {
+            enabled: settingsForm.whatsapp_enabled,
+            server_url: settingsForm.whatsapp_server_url,
+            default_instance: settingsForm.whatsapp_default_instance,
+            api_token: settingsForm.whatsapp_api_token,
+          }
+        });
+
+      // Mercado Pago
+      await supabase
+        .from("global_settings")
+        .upsert({
+          key: 'mercadopago',
+          value: {
+            enabled: settingsForm.mercadopago_enabled,
+            public_key: settingsForm.mercadopago_public_key,
+            access_token: settingsForm.mercadopago_access_token,
+            mode: settingsForm.mercadopago_mode,
+          }
+        });
+
+      // Stripe
+      await supabase
+        .from("global_settings")
+        .upsert({
+          key: 'stripe',
+          value: {
+            enabled: settingsForm.stripe_enabled,
+            public_key: settingsForm.stripe_public_key,
+            secret_key: settingsForm.stripe_secret_key,
+            mode: settingsForm.stripe_mode,
+          }
+        });
+
+      toast({ title: "✅ Configuraciones globales guardadas" });
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error al guardar configuraciones",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
     toast({ title: `✅ ${label} copiado al portapapeles` });
   };
 
-  const getPlanBadge = (planId: string) => {
+  const resetCompanyForm = () => {
+    setCompanyForm({
+      name: "",
+      slug: "",
+      email: "",
+      phone: "",
+      address: "",
+      primary_color: "#2563EB",
+      secondary_color: "#8B5CF6",
+      logo_url: "",
+      plan: plans.length > 0 ? plans[0].id : "",
+      custom_plan: false,
+      max_users: -1,
+      max_podiatrists: -1,
+      max_monthly_appointments: -1,
+      admin_email: "",
+      admin_name: "",
+      admin_password: "",
+      whatsapp_enabled: false,
+      whatsapp_instance: "",
+      whatsapp_use_global: true,
+      mercadopago_enabled: false,
+      mercadopago_public_key: "",
+      mercadopago_access_token: "",
+      mercadopago_use_global: true,
+    });
+  };
+
+  const getPlanBadge = (planId: string | null, isCustom: boolean) => {
+    if (isCustom) {
+      return (
+        <Badge className="bg-gradient-to-r from-amber-600 to-orange-600 text-white border-0">
+          <Infinity className="w-3 h-3 mr-1" />
+          Custom
+        </Badge>
+      );
+    }
+
     const plan = plans.find(p => p.id === planId);
     if (!plan) return <Badge className="bg-gray-500 text-white border-0">Sin plan</Badge>;
 
@@ -595,6 +866,45 @@ export default function SuperAdmin() {
         </DialogContent>
       </Dialog>
 
+      {/* Password Dialog */}
+      <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cambiar Contraseña del Admin</DialogTitle>
+            <DialogDescription>
+              Actualiza la contraseña por defecto del administrador de esta empresa
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>Nueva Contraseña</Label>
+              <div className="flex gap-2 mt-1">
+                <Input
+                  type="text"
+                  value={passwordForm.new_password}
+                  onChange={(e) => setPasswordForm({ ...passwordForm, new_password: e.target.value })}
+                  placeholder="Ingresa nueva contraseña"
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => setPasswordForm({ ...passwordForm, new_password: generatePassword() })}
+                >
+                  Generar
+                </Button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPasswordDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleUpdatePassword}>
+              Actualizar Contraseña
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Dashboard Tab */}
       {activeTabId === "dashboard" && (
         <div className="space-y-8">
@@ -665,19 +975,23 @@ export default function SuperAdmin() {
               {companies.slice(0, 5).map((company) => (
                 <div key={company.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                   <div className="flex items-center gap-4">
-                    <div 
-                      className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg"
-                      style={{ background: `linear-gradient(135deg, ${(company.metadata as any)?.primary_color || '#2563EB'}, ${(company.metadata as any)?.secondary_color || '#8B5CF6'})` }}
-                    >
-                      {company.name.charAt(0)}
-                    </div>
+                    {company.logo_url ? (
+                      <img src={company.logo_url} alt={company.name} className="w-12 h-12 rounded-xl object-cover shadow-lg" />
+                    ) : (
+                      <div 
+                        className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg"
+                        style={{ background: `linear-gradient(135deg, ${(company.metadata as any)?.primary_color || '#2563EB'}, ${(company.metadata as any)?.secondary_color || '#8B5CF6'})` }}
+                      >
+                        {company.name.charAt(0)}
+                      </div>
+                    )}
                     <div>
                       <p className="font-semibold text-gray-900">{company.name}</p>
                       <p className="text-sm text-gray-600">{company.email}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {getPlanBadge(company.plan)}
+                    {getPlanBadge(company.plan, company.custom_plan)}
                     {getStatusBadge(company.plan_status)}
                   </div>
                 </div>
@@ -702,20 +1016,24 @@ export default function SuperAdmin() {
                   Nueva Empresa
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingCompany ? "Editar Empresa" : "Nueva Empresa"}</DialogTitle>
                   <DialogDescription>
-                    Complete todos los datos de la empresa y su administrador
+                    Complete todos los datos de la empresa y configuraciones
                   </DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-6 py-4">
-                  {/* Datos de la Empresa */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                      <Building2 className="w-5 h-5 text-blue-600" />
-                      Datos de la Empresa
-                    </h3>
+
+                <Tabs defaultValue="general" className="w-full">
+                  <TabsList className="grid w-full grid-cols-4">
+                    <TabsTrigger value="general">General</TabsTrigger>
+                    <TabsTrigger value="plan">Plan</TabsTrigger>
+                    <TabsTrigger value="personalizacion">Diseño</TabsTrigger>
+                    <TabsTrigger value="integraciones">Integraciones</TabsTrigger>
+                  </TabsList>
+
+                  {/* Tab General */}
+                  <TabsContent value="general" className="space-y-4 mt-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="name">Nombre *</Label>
@@ -742,6 +1060,7 @@ export default function SuperAdmin() {
                         <p className="text-xs text-gray-500 mt-1">podoagenda.com/{companyForm.slug || "slug"}</p>
                       </div>
                     </div>
+
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="email">Email *</Label>
@@ -763,6 +1082,7 @@ export default function SuperAdmin() {
                         />
                       </div>
                     </div>
+
                     <div>
                       <Label htmlFor="address">Dirección</Label>
                       <Input
@@ -772,34 +1092,157 @@ export default function SuperAdmin() {
                         placeholder="Av. Principal 123"
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="plan">Plan *</Label>
-                      <Select value={companyForm.plan} onValueChange={(value: any) => setCompanyForm({ ...companyForm, plan: value })}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {plans.map((plan) => (
-                            <SelectItem key={plan.id} value={plan.id}>
-                              {plan.name} - ${plan.price_monthly}/mes
-                              {plan.max_users > 0 && ` (Hasta ${plan.max_users} usuarios, ${plan.max_podiatrists} podólogos)`}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
 
-                  {/* Personalización */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                      <Palette className="w-5 h-5 text-purple-600" />
-                      Personalización
-                    </h3>
+                    <div>
+                      <Label>Logo</Label>
+                      <div className="flex items-center gap-4 mt-2">
+                        {companyForm.logo_url && (
+                          <img src={companyForm.logo_url} alt="Logo" className="w-20 h-20 rounded-xl object-cover border-2" />
+                        )}
+                        <div className="flex-1">
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleLogoUpload}
+                            disabled={uploadingLogo}
+                            className="mb-2"
+                          />
+                          <Input
+                            placeholder="O ingresa URL del logo"
+                            value={companyForm.logo_url}
+                            onChange={(e) => setCompanyForm({ ...companyForm, logo_url: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {!editingCompany && (
+                      <>
+                        <hr className="my-4" />
+                        <h3 className="text-lg font-semibold">Administrador de la Empresa</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="admin_name">Nombre Completo *</Label>
+                            <Input
+                              id="admin_name"
+                              value={companyForm.admin_name}
+                              onChange={(e) => setCompanyForm({ ...companyForm, admin_name: e.target.value })}
+                              placeholder="Juan Pérez"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="admin_email">Email *</Label>
+                            <Input
+                              id="admin_email"
+                              type="email"
+                              value={companyForm.admin_email}
+                              onChange={(e) => setCompanyForm({ ...companyForm, admin_email: e.target.value })}
+                              placeholder="admin@clinica.com"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="admin_password">Contraseña (dejar vacío para generar)</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="admin_password"
+                              type="text"
+                              value={companyForm.admin_password}
+                              onChange={(e) => setCompanyForm({ ...companyForm, admin_password: e.target.value })}
+                              placeholder="Se generará automáticamente"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setCompanyForm({ ...companyForm, admin_password: generatePassword() })}
+                            >
+                              Generar
+                            </Button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </TabsContent>
+
+                  {/* Tab Plan */}
+                  <TabsContent value="plan" className="space-y-4 mt-4">
+                    <div className="flex items-center gap-4 mb-4">
+                      <Switch
+                        checked={companyForm.custom_plan}
+                        onCheckedChange={(checked) => setCompanyForm({ ...companyForm, custom_plan: checked })}
+                      />
+                      <div>
+                        <Label className="font-semibold">Plan Personalizado</Label>
+                        <p className="text-sm text-gray-600">Activar para configurar límites manualmente</p>
+                      </div>
+                    </div>
+
+                    {!companyForm.custom_plan ? (
+                      <div>
+                        <Label htmlFor="plan">Seleccionar Plan *</Label>
+                        <Select value={companyForm.plan} onValueChange={(value: any) => setCompanyForm({ ...companyForm, plan: value })}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {plans.map((plan) => (
+                              <SelectItem key={plan.id} value={plan.id}>
+                                {plan.name} - ${plan.price_monthly}/mes
+                                {plan.max_users > 0 && ` (${plan.max_users} usuarios, ${plan.max_podiatrists} podólogos)`}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                          <div className="flex items-center gap-2 text-amber-800 mb-2">
+                            <Infinity className="w-5 h-5" />
+                            <span className="font-semibold">Plan Personalizado / Ilimitado</span>
+                          </div>
+                          <p className="text-sm text-amber-700">Usa -1 para ilimitado</p>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <Label>Máximo Usuarios</Label>
+                            <Input
+                              type="number"
+                              value={companyForm.max_users}
+                              onChange={(e) => setCompanyForm({ ...companyForm, max_users: parseInt(e.target.value) })}
+                              placeholder="-1 = ilimitado"
+                            />
+                          </div>
+                          <div>
+                            <Label>Máximo Podólogos</Label>
+                            <Input
+                              type="number"
+                              value={companyForm.max_podiatrists}
+                              onChange={(e) => setCompanyForm({ ...companyForm, max_podiatrists: parseInt(e.target.value) })}
+                              placeholder="-1 = ilimitado"
+                            />
+                          </div>
+                          <div>
+                            <Label>Citas/Mes</Label>
+                            <Input
+                              type="number"
+                              value={companyForm.max_monthly_appointments}
+                              onChange={(e) => setCompanyForm({ ...companyForm, max_monthly_appointments: parseInt(e.target.value) })}
+                              placeholder="-1 = ilimitado"
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </TabsContent>
+
+                  {/* Tab Personalización */}
+                  <TabsContent value="personalizacion" className="space-y-4 mt-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="primary_color">Color Primario</Label>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 mt-2">
                           <Input
                             id="primary_color"
                             type="color"
@@ -816,7 +1259,7 @@ export default function SuperAdmin() {
                       </div>
                       <div>
                         <Label htmlFor="secondary_color">Color Secundario</Label>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 mt-2">
                           <Input
                             id="secondary_color"
                             type="color"
@@ -832,62 +1275,118 @@ export default function SuperAdmin() {
                         </div>
                       </div>
                     </div>
-                    <div>
-                      <Label htmlFor="logo_url">Logo URL (opcional)</Label>
-                      <Input
-                        id="logo_url"
-                        value={companyForm.logo_url}
-                        onChange={(e) => setCompanyForm({ ...companyForm, logo_url: e.target.value })}
-                        placeholder="https://..."
-                      />
-                    </div>
-                  </div>
 
-                  {/* Administrador (solo al crear) */}
-                  {!editingCompany && (
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-semibold flex items-center gap-2">
-                        <Users className="w-5 h-5 text-green-600" />
-                        Administrador de la Empresa
-                      </h3>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="admin_name">Nombre Completo *</Label>
-                          <Input
-                            id="admin_name"
-                            value={companyForm.admin_name}
-                            onChange={(e) => setCompanyForm({ ...companyForm, admin_name: e.target.value })}
-                            placeholder="Juan Pérez"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="admin_email">Email *</Label>
-                          <Input
-                            id="admin_email"
-                            type="email"
-                            value={companyForm.admin_email}
-                            onChange={(e) => setCompanyForm({ ...companyForm, admin_email: e.target.value })}
-                            placeholder="admin@clinica.com"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <Label htmlFor="admin_password">Contraseña (dejar vacío para generar automática)</Label>
-                        <Input
-                          id="admin_password"
-                          type="text"
-                          value={companyForm.admin_password}
-                          onChange={(e) => setCompanyForm({ ...companyForm, admin_password: e.target.value })}
-                          placeholder="Se generará automáticamente"
+                    <div className="p-4 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl">
+                      <p className="text-sm font-semibold mb-2">Vista Previa</p>
+                      <div className="flex items-center gap-4">
+                        <div 
+                          className="w-20 h-20 rounded-xl shadow-lg"
+                          style={{ background: `linear-gradient(135deg, ${companyForm.primary_color}, ${companyForm.secondary_color})` }}
                         />
+                        <div>
+                          <p className="text-sm text-gray-600">Gradiente de marca</p>
+                          <p className="text-xs text-gray-500">Se aplicará en toda la interfaz de la empresa</p>
+                        </div>
                       </div>
                     </div>
-                  )}
-                </div>
+                  </TabsContent>
+
+                  {/* Tab Integraciones */}
+                  <TabsContent value="integraciones" className="space-y-4 mt-4">
+                    <div className="space-y-6">
+                      {/* WhatsApp */}
+                      <div className="p-4 border rounded-xl">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-2">
+                            <MessageSquare className="w-5 h-5 text-green-600" />
+                            <h3 className="font-semibold">WhatsApp</h3>
+                          </div>
+                          <Switch
+                            checked={companyForm.whatsapp_enabled}
+                            onCheckedChange={(checked) => setCompanyForm({ ...companyForm, whatsapp_enabled: checked })}
+                          />
+                        </div>
+
+                        {companyForm.whatsapp_enabled && (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={companyForm.whatsapp_use_global}
+                                onCheckedChange={(checked) => setCompanyForm({ ...companyForm, whatsapp_use_global: checked })}
+                              />
+                              <Label className="text-sm">Usar configuración global</Label>
+                            </div>
+
+                            {!companyForm.whatsapp_use_global && (
+                              <div>
+                                <Label>Nombre de Instancia</Label>
+                                <Input
+                                  value={companyForm.whatsapp_instance}
+                                  onChange={(e) => setCompanyForm({ ...companyForm, whatsapp_instance: e.target.value })}
+                                  placeholder="mi-clinica-whatsapp"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Mercado Pago */}
+                      <div className="p-4 border rounded-xl">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-2">
+                            <CreditCard className="w-5 h-5 text-blue-600" />
+                            <h3 className="font-semibold">Mercado Pago</h3>
+                          </div>
+                          <Switch
+                            checked={companyForm.mercadopago_enabled}
+                            onCheckedChange={(checked) => setCompanyForm({ ...companyForm, mercadopago_enabled: checked })}
+                          />
+                        </div>
+
+                        {companyForm.mercadopago_enabled && (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={companyForm.mercadopago_use_global}
+                                onCheckedChange={(checked) => setCompanyForm({ ...companyForm, mercadopago_use_global: checked })}
+                              />
+                              <Label className="text-sm">Usar configuración global</Label>
+                            </div>
+
+                            {!companyForm.mercadopago_use_global && (
+                              <>
+                                <div>
+                                  <Label>Public Key</Label>
+                                  <Input
+                                    value={companyForm.mercadopago_public_key}
+                                    onChange={(e) => setCompanyForm({ ...companyForm, mercadopago_public_key: e.target.value })}
+                                    placeholder="APP_USR-..."
+                                  />
+                                </div>
+                                <div>
+                                  <Label>Access Token</Label>
+                                  <Input
+                                    type="password"
+                                    value={companyForm.mercadopago_access_token}
+                                    onChange={(e) => setCompanyForm({ ...companyForm, mercadopago_access_token: e.target.value })}
+                                    placeholder="APP_USR-..."
+                                  />
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+
                 <DialogFooter>
                   <Button variant="outline" onClick={() => {
                     setCompanyDialogOpen(false);
                     setEditingCompany(null);
+                    resetCompanyForm();
                   }}>
                     Cancelar
                   </Button>
@@ -916,12 +1415,16 @@ export default function SuperAdmin() {
                   <TableRow key={company.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div 
-                          className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold shadow-lg"
-                          style={{ background: `linear-gradient(135deg, ${(company.metadata as any)?.primary_color || '#2563EB'}, ${(company.metadata as any)?.secondary_color || '#8B5CF6'})` }}
-                        >
-                          {company.name.charAt(0)}
-                        </div>
+                        {company.logo_url ? (
+                          <img src={company.logo_url} alt={company.name} className="w-10 h-10 rounded-xl object-cover shadow-lg" />
+                        ) : (
+                          <div 
+                            className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold shadow-lg"
+                            style={{ background: `linear-gradient(135deg, ${(company.metadata as any)?.primary_color || '#2563EB'}, ${(company.metadata as any)?.secondary_color || '#8B5CF6'})` }}
+                          >
+                            {company.name.charAt(0)}
+                          </div>
+                        )}
                         <div>
                           <p className="font-semibold">{company.name}</p>
                           <p className="text-sm text-gray-600">{company.email}</p>
@@ -929,12 +1432,12 @@ export default function SuperAdmin() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {getPlanBadge(company.plan)}
+                      {getPlanBadge(company.plan, company.custom_plan)}
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1">
                         {getStatusBadge(company.plan_status)}
-                        {company.plan_status === 'trial' && (
+                        {company.plan_status === 'trial' && company.trial_ends_at && (
                           <div className="flex items-center gap-1 text-xs text-gray-600">
                             <Clock className="w-3 h-3" />
                             <span>Termina en {Math.ceil((new Date(company.trial_ends_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} días</span>
@@ -967,7 +1470,21 @@ export default function SuperAdmin() {
                           size="sm"
                           variant="ghost"
                           onClick={() => {
+                            setPasswordForm({ 
+                              company_id: company.id, 
+                              new_password: company.default_admin_password || "" 
+                            });
+                            setPasswordDialogOpen(true);
+                          }}
+                        >
+                          <Key className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
                             setEditingCompany(company);
+                            const integrations = company.integrations || {};
                             setCompanyForm({
                               name: company.name || "",
                               slug: company.slug || "",
@@ -977,10 +1494,21 @@ export default function SuperAdmin() {
                               logo_url: company.logo_url || "",
                               primary_color: (company.metadata as any)?.primary_color || "#2563EB",
                               secondary_color: (company.metadata as any)?.secondary_color || "#8B5CF6",
-                              plan: company.plan || "ba9cb6da-f5a2-400d-a0b4-8d885564f62e",
+                              plan: company.plan || "",
+                              custom_plan: company.custom_plan || false,
+                              max_users: company.max_users || -1,
+                              max_podiatrists: company.max_podiatrists || -1,
+                              max_monthly_appointments: company.max_monthly_appointments || -1,
                               admin_email: "",
                               admin_name: "",
                               admin_password: "",
+                              whatsapp_enabled: integrations.whatsapp?.enabled || false,
+                              whatsapp_instance: integrations.whatsapp?.instance_name || "",
+                              whatsapp_use_global: integrations.whatsapp?.use_global !== false,
+                              mercadopago_enabled: integrations.mercadopago?.enabled || false,
+                              mercadopago_public_key: integrations.mercadopago?.public_key || "",
+                              mercadopago_access_token: integrations.mercadopago?.access_token || "",
+                              mercadopago_use_global: integrations.mercadopago?.use_global !== false,
                             });
                             setCompanyDialogOpen(true);
                           }}
@@ -1057,13 +1585,21 @@ export default function SuperAdmin() {
                   </div>
                   <div>
                     <Label htmlFor="user_password">Contraseña (dejar vacío para generar automática)</Label>
-                    <Input
-                      id="user_password"
-                      type="text"
-                      value={userForm.password}
-                      onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
-                      placeholder="Se generará automáticamente"
-                    />
+                    <div className="flex gap-2">
+                      <Input
+                        id="user_password"
+                        type="text"
+                        value={userForm.password}
+                        onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                        placeholder="Se generará automáticamente"
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={() => setUserForm({ ...userForm, password: generatePassword() })}
+                      >
+                        Generar
+                      </Button>
+                    </div>
                   </div>
                   <div>
                     <Label htmlFor="user_role">Rol *</Label>
@@ -1152,6 +1688,189 @@ export default function SuperAdmin() {
         </div>
       )}
 
+      {/* Integraciones Tab */}
+      {activeTabId === "integraciones" && (
+        <div className="space-y-6">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Integraciones Globales</h1>
+            <p className="text-gray-600">Configuración de APIs y servicios externos</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* WhatsApp */}
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                    <MessageSquare className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">WhatsApp API</h3>
+                    <p className="text-sm text-gray-600">Notificaciones automáticas</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={settingsForm.whatsapp_enabled}
+                  onCheckedChange={(checked) => setSettingsForm({ ...settingsForm, whatsapp_enabled: checked })}
+                />
+              </div>
+
+              {settingsForm.whatsapp_enabled && (
+                <div className="space-y-4">
+                  <div>
+                    <Label>URL del Servidor</Label>
+                    <Input
+                      value={settingsForm.whatsapp_server_url}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, whatsapp_server_url: e.target.value })}
+                      placeholder="https://api.whatsapp.com"
+                    />
+                  </div>
+                  <div>
+                    <Label>Instancia por Defecto</Label>
+                    <Input
+                      value={settingsForm.whatsapp_default_instance}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, whatsapp_default_instance: e.target.value })}
+                      placeholder="podoagenda-main"
+                    />
+                  </div>
+                  <div>
+                    <Label>API Token</Label>
+                    <Input
+                      type="password"
+                      value={settingsForm.whatsapp_api_token}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, whatsapp_api_token: e.target.value })}
+                      placeholder="Token de autenticación"
+                    />
+                  </div>
+                </div>
+              )}
+            </Card>
+
+            {/* Mercado Pago */}
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <CreditCard className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">Mercado Pago</h3>
+                    <p className="text-sm text-gray-600">Procesamiento de pagos</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={settingsForm.mercadopago_enabled}
+                  onCheckedChange={(checked) => setSettingsForm({ ...settingsForm, mercadopago_enabled: checked })}
+                />
+              </div>
+
+              {settingsForm.mercadopago_enabled && (
+                <div className="space-y-4">
+                  <div>
+                    <Label>Public Key</Label>
+                    <Input
+                      value={settingsForm.mercadopago_public_key}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, mercadopago_public_key: e.target.value })}
+                      placeholder="APP_USR-..."
+                    />
+                  </div>
+                  <div>
+                    <Label>Access Token</Label>
+                    <Input
+                      type="password"
+                      value={settingsForm.mercadopago_access_token}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, mercadopago_access_token: e.target.value })}
+                      placeholder="APP_USR-..."
+                    />
+                  </div>
+                  <div>
+                    <Label>Modo</Label>
+                    <Select 
+                      value={settingsForm.mercadopago_mode} 
+                      onValueChange={(value) => setSettingsForm({ ...settingsForm, mercadopago_mode: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sandbox">Sandbox (Pruebas)</SelectItem>
+                        <SelectItem value="production">Producción</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+            </Card>
+
+            {/* Stripe */}
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                    <CreditCard className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">Stripe</h3>
+                    <p className="text-sm text-gray-600">Pagos internacionales</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={settingsForm.stripe_enabled}
+                  onCheckedChange={(checked) => setSettingsForm({ ...settingsForm, stripe_enabled: checked })}
+                />
+              </div>
+
+              {settingsForm.stripe_enabled && (
+                <div className="space-y-4">
+                  <div>
+                    <Label>Public Key</Label>
+                    <Input
+                      value={settingsForm.stripe_public_key}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, stripe_public_key: e.target.value })}
+                      placeholder="pk_..."
+                    />
+                  </div>
+                  <div>
+                    <Label>Secret Key</Label>
+                    <Input
+                      type="password"
+                      value={settingsForm.stripe_secret_key}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, stripe_secret_key: e.target.value })}
+                      placeholder="sk_..."
+                    />
+                  </div>
+                  <div>
+                    <Label>Modo</Label>
+                    <Select 
+                      value={settingsForm.stripe_mode} 
+                      onValueChange={(value) => setSettingsForm({ ...settingsForm, stripe_mode: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="test">Test</SelectItem>
+                        <SelectItem value="live">Live (Producción)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+            </Card>
+          </div>
+
+          <div className="flex justify-end">
+            <Button 
+              onClick={handleSaveGlobalSettings}
+              className="gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+            >
+              <Save className="w-5 h-5" />
+              Guardar Configuración Global
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Personalización Tab */}
       {activeTabId === "personalizacion" && (
         <div className="space-y-6">
@@ -1173,12 +1892,16 @@ export default function SuperAdmin() {
               {companies.map((company) => (
                 <Card key={company.id} className="p-6 border-2">
                   <div className="flex items-center gap-4 mb-4">
-                    <div 
-                      className="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg"
-                      style={{ background: `linear-gradient(135deg, ${(company.metadata as any)?.primary_color || '#2563EB'}, ${(company.metadata as any)?.secondary_color || '#8B5CF6'})` }}
-                    >
-                      {company.name.charAt(0)}
-                    </div>
+                    {company.logo_url ? (
+                      <img src={company.logo_url} alt={company.name} className="w-16 h-16 rounded-2xl object-cover shadow-lg" />
+                    ) : (
+                      <div 
+                        className="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg"
+                        style={{ background: `linear-gradient(135deg, ${(company.metadata as any)?.primary_color || '#2563EB'}, ${(company.metadata as any)?.secondary_color || '#8B5CF6'})` }}
+                      >
+                        {company.name.charAt(0)}
+                      </div>
+                    )}
                     <div>
                       <h4 className="font-semibold text-lg">{company.name}</h4>
                       <p className="text-sm text-gray-600">{company.slug}</p>
@@ -1207,6 +1930,7 @@ export default function SuperAdmin() {
                     variant="outline"
                     onClick={() => {
                       setEditingCompany(company);
+                      const integrations = company.integrations || {};
                       setCompanyForm({
                         name: company.name || "",
                         slug: company.slug || "",
@@ -1216,10 +1940,21 @@ export default function SuperAdmin() {
                         logo_url: company.logo_url || "",
                         primary_color: (company.metadata as any)?.primary_color || "#2563EB",
                         secondary_color: (company.metadata as any)?.secondary_color || "#8B5CF6",
-                        plan: company.plan || "ba9cb6da-f5a2-400d-a0b4-8d885564f62e",
+                        plan: company.plan || "",
+                        custom_plan: company.custom_plan || false,
+                        max_users: company.max_users || -1,
+                        max_podiatrists: company.max_podiatrists || -1,
+                        max_monthly_appointments: company.max_monthly_appointments || -1,
                         admin_email: "",
                         admin_name: "",
                         admin_password: "",
+                        whatsapp_enabled: integrations.whatsapp?.enabled || false,
+                        whatsapp_instance: integrations.whatsapp?.instance_name || "",
+                        whatsapp_use_global: integrations.whatsapp?.use_global !== false,
+                        mercadopago_enabled: integrations.mercadopago?.enabled || false,
+                        mercadopago_public_key: integrations.mercadopago?.public_key || "",
+                        mercadopago_access_token: integrations.mercadopago?.access_token || "",
+                        mercadopago_use_global: integrations.mercadopago?.use_global !== false,
                       });
                       setCompanyDialogOpen(true);
                     }}
@@ -1280,7 +2015,7 @@ export default function SuperAdmin() {
                   {plans.map((plan) => (
                     <Card key={plan.id} className="p-6 border-2">
                       <div className="text-center mb-4">
-                        {getPlanBadge(plan.id)}
+                        {getPlanBadge(plan.id, false)}
                         <p className="text-3xl font-bold mt-2">${plan.price_monthly}</p>
                         <p className="text-sm text-gray-600">por mes</p>
                       </div>
