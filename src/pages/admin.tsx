@@ -34,11 +34,13 @@ import {
   Download
 } from "lucide-react";
 
-export default function AdminPanel() {
+export default function Admin() {
   const router = useRouter();
-  const { tab = "dashboard" } = router.query;
+  const { toast } = useToast();
+  const { tab } = router.query;
+  const [activeTab, setActiveTab] = useState("dashboard");
   const [loading, setLoading] = useState(true);
-  const [session, setSession] = useState<any>(null);
+  const [mounted, setMounted] = useState(false);
   const [companyData, setCompanyData] = useState<any>(null);
   const [planData, setPlanData] = useState<any>(null);
 
@@ -111,16 +113,65 @@ export default function AdminPanel() {
   });
 
   useEffect(() => {
-    const sessionData = JSON.parse(localStorage.getItem("session") || "{}");
-    if (!sessionData.userId || sessionData.role !== "owner") {
-      router.push("/login");
-      return;
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted) {
+      checkAuth();
     }
-    setSession(sessionData);
-    loadData();
+  }, [mounted, router]);
+
+  useEffect(() => {
+    if (tab && typeof tab === "string") {
+      setActiveTab(tab);
+    }
   }, [tab]);
 
-  const loadData = async () => {
+  const checkAuth = async () => {
+    try {
+      const session = authService.getSession();
+      
+      if (!session) {
+        console.log("❌ No hay sesión, redirigiendo a login");
+        router.replace("/login");
+        return;
+      }
+
+      console.log("✅ Sesión encontrada:", session);
+
+      // Verificar que sea admin o owner
+      if (session.role !== "owner" && session.role !== "admin") {
+        console.log("❌ Usuario no es admin, redirigiendo");
+        toast({
+          title: "Acceso Denegado",
+          description: "No tienes permisos para acceder al panel de administración",
+          variant: "destructive",
+        });
+        router.replace(authService.getDashboardRoute());
+        return;
+      }
+
+      if (!session.companyId) {
+        console.log("❌ Usuario admin sin empresa asignada");
+        toast({
+          title: "Error de Configuración",
+          description: "Tu usuario no tiene una empresa asignada",
+          variant: "destructive",
+        });
+        router.replace("/login");
+        return;
+      }
+
+      console.log("✅ Usuario autorizado, cargando datos");
+      await loadData(session.companyId);
+    } catch (error) {
+      console.error("💥 Error en checkAuth:", error);
+      setLoading(false);
+    }
+  };
+
+  const loadData = async (companyId: string) => {
     setLoading(true);
     const sessionData = JSON.parse(localStorage.getItem("session") || "{}");
 
@@ -424,13 +475,14 @@ export default function AdminPanel() {
     );
   };
 
-  if (loading) {
+  if (!mounted || loading) {
     return (
-      <AdminLayout>
-        <div className="flex items-center justify-center h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando panel de administración...</p>
         </div>
-      </AdminLayout>
+      </div>
     );
   }
 

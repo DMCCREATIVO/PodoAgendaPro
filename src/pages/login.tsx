@@ -16,28 +16,22 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedRole, setSelectedRole] = useState<"superadmin" | "staff" | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    // Si ya está autenticado, redirigir
-    if (authService.isAuthenticated()) {
-      redirectToDashboard();
-    }
-  }, []);
+    setMounted(true);
+    
+    // Verificar si ya está autenticado SOLO una vez al montar
+    const checkAuth = () => {
+      if (authService.isAuthenticated()) {
+        const dashboardRoute = authService.getDashboardRoute();
+        console.log("✅ Usuario ya autenticado, redirigiendo a:", dashboardRoute);
+        router.replace(dashboardRoute); // Usar replace en vez de push para evitar volver atrás
+      }
+    };
 
-  const redirectToDashboard = () => {
-    const session = authService.getSession();
-    if (!session) return;
-
-    if (session.isSuperadmin) {
-      window.location.href = "/superadmin";
-    } else if (session.role === "owner") {
-      window.location.href = "/admin";
-    } else if (session.role === "employee") {
-      window.location.href = "/podologo";
-    } else {
-      window.location.href = "/cliente";
-    }
-  };
+    checkAuth();
+  }, []); // Solo ejecutar una vez al montar
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,19 +48,27 @@ export default function Login() {
     setLoading(true);
 
     try {
+      console.log("🔐 Intentando login con:", email);
       const result = await authService.login(email, password);
 
       if (result.success && result.session) {
+        console.log("✅ Login exitoso:", result.session);
+        
         toast({
           title: "✅ Acceso Exitoso",
           description: `Bienvenido, ${result.session.fullName}`,
         });
 
-        // Pequeño delay para que se vea el toast
+        // Obtener ruta según rol
+        const dashboardRoute = authService.getDashboardRoute();
+        console.log("🔄 Redirigiendo a:", dashboardRoute);
+
+        // Redirigir usando replace para evitar loops
         setTimeout(() => {
-          redirectToDashboard();
+          router.replace(dashboardRoute);
         }, 500);
       } else {
+        console.error("❌ Login fallido:", result.error);
         toast({
           title: "Error de Acceso",
           description: result.error || "Credenciales incorrectas",
@@ -75,6 +77,7 @@ export default function Login() {
         setLoading(false);
       }
     } catch (error: any) {
+      console.error("💥 Error en handleLogin:", error);
       toast({
         title: "Error",
         description: error.message || "Error inesperado",
@@ -83,6 +86,11 @@ export default function Login() {
       setLoading(false);
     }
   };
+
+  // No renderizar hasta que el componente esté montado (evita hidration mismatch)
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
@@ -124,6 +132,17 @@ export default function Login() {
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Personal / Paciente</h3>
                 <p className="text-sm text-blue-100">Acceso a clínicas y portal paciente</p>
+              </div>
+            </div>
+
+            <div className="mt-8 p-4 bg-white/10 rounded-xl">
+              <p className="text-sm text-blue-100 mb-2">👤 Usuarios Demo:</p>
+              <div className="space-y-1 text-xs text-blue-200">
+                <p>• superadmin@demo.com</p>
+                <p>• admin@demo.com</p>
+                <p>• podologo@demo.com</p>
+                <p>• paciente@demo.com</p>
+                <p className="mt-2">🔑 Password: <span className="font-mono">Admin123!</span></p>
               </div>
             </div>
           </div>
@@ -199,6 +218,7 @@ export default function Login() {
                       setPassword("");
                     }}
                     className="w-full"
+                    disabled={loading}
                   >
                     ← Cambiar tipo de acceso
                   </Button>
