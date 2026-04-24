@@ -92,56 +92,65 @@ export default function AdminCustomization() {
 
   const loadData = async (email: string) => {
     try {
-      // Get user and company
+      // Get user ID
       const { data: userData } = await supabase
         .from("users")
-        .select("id, company_id, companies!inner(id, name, slug)")
+        .select("id")
         .eq("email", email)
         .single();
 
-      if (userData && userData.companies) {
-        const comp = userData.companies as any;
-        setCompany({
-          id: comp.id,
-          name: comp.name,
-          slug: comp.slug
-        });
-
-        // Load themes
-        const { data: themesData } = await supabase
-          .from("theme_templates")
-          .select("*")
-          .eq("is_active", true)
-          .order("name");
-
-        if (themesData) {
-          setThemes(themesData as ThemeTemplate[]);
-        }
-
-        // Load existing customization
-        const { data: customData } = await supabase
-          .from("company_customization")
-          .select("*")
-          .eq("company_id", comp.id)
+      if (userData) {
+        // Get company
+        const { data: compUser } = await supabase
+          .from("company_users")
+          .select("company_id, companies!inner(id, name, slug)")
+          .eq("user_id", userData.id)
           .single();
 
-        if (customData) {
-          setSelectedTheme(customData.theme_id);
-          const config = customData.custom_config as any;
-          setHeroTitle(config.hero?.title || "");
-          setHeroSubtitle(config.hero?.subtitle || "");
-          setHeroBio(config.hero?.bio || "");
-          setPhone(config.contact?.phone || "");
-          setEmail(config.contact?.email || "");
-          setWhatsapp(config.contact?.whatsapp || "");
-          setAddress(config.contact?.address || "");
-          setInstagram(config.social?.instagram || "");
-          setFacebook(config.social?.facebook || "");
-          setLinkedin(config.social?.linkedin || "");
-          setTwitter(config.social?.twitter || "");
-          setCustomPrimary(config.colors?.primary || "");
-          setCustomSecondary(config.colors?.secondary || "");
-          setCustomAccent(config.colors?.accent || "");
+        if (compUser && compUser.companies) {
+          const comp = compUser.companies as any;
+          setCompany({
+            id: comp.id,
+            name: comp.name,
+            slug: comp.slug
+          });
+
+          // Load themes
+          const { data: themesData } = await supabase
+            .from("theme_templates")
+            .select("*")
+            .eq("is_active", true)
+            .order("name");
+
+          if (themesData) {
+            setThemes(themesData as unknown as ThemeTemplate[]);
+          }
+
+          // Load existing customization
+          const { data: customData } = await supabase
+            .from("company_customization")
+            .select("*")
+            .eq("company_id", comp.id)
+            .single();
+
+          if (customData) {
+            setSelectedTheme(customData.theme_id);
+            const config = customData.custom_config as any;
+            setHeroTitle(config.hero?.title || "");
+            setHeroSubtitle(config.hero?.subtitle || "");
+            setHeroBio(config.hero?.bio || "");
+            setPhone(config.contact?.phone || "");
+            setEmail(config.contact?.email || "");
+            setWhatsapp(config.contact?.whatsapp || "");
+            setAddress(config.contact?.address || "");
+            setInstagram(config.social?.instagram || "");
+            setFacebook(config.social?.facebook || "");
+            setLinkedin(config.social?.linkedin || "");
+            setTwitter(config.social?.twitter || "");
+            setCustomPrimary(config.colors?.primary || "");
+            setCustomSecondary(config.colors?.secondary || "");
+            setCustomAccent(config.colors?.accent || "");
+          }
         }
       }
 
