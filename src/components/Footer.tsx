@@ -24,13 +24,13 @@ export function Footer() {
               <Link href="/#servicios" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Servicios
               </Link>
-              <Link href="/#podologos" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
-                Podólogos
+              <Link href="/#planes" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
+                Planes
               </Link>
               <Link href="/agenda" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Reservar
               </Link>
-              <Link href="/auth" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <Link href="/login" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Acceso
               </Link>
             </div>

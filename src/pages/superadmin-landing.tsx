@@ -109,14 +109,14 @@ export default function SuperAdminLanding() {
   }, []);
 
   const checkAuth = async () => {
-    const sessionData = localStorage.getItem("session");
+    const sessionData = localStorage.getItem("podoagenda_session");
     if (!sessionData) {
       router.push("/login");
       return;
     }
 
     const session = JSON.parse(sessionData);
-    if (session.role !== "superadmin") {
+    if (session.role !== "superadmin" && !session.isSuperadmin) {
       router.push("/login");
       return;
     }

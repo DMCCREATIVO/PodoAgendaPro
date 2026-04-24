@@ -21,10 +21,10 @@ export function Navigation() {
             <Link href="/#podologos" className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors">
               Podólogos
             </Link>
-            <Link href="/#beneficios" className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors">
-              Beneficios
+            <Link href="/#planes" className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors">
+              Planes
             </Link>
-            <Link href="/auth" className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors">
+            <Link href="/login" className="text-sm font-medium text-foreground/70 hover:text-foreground transition-colors">
               Acceso
             </Link>
           </div>

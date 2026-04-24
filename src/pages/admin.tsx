@@ -366,12 +366,14 @@ export default function Admin() {
             return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16); 
           });
 
-      // Insertar en users
+      // Insertar en users con role y company_id
       const { error: userError } = await supabase.from("users").insert([{
         id: userId,
         email: podologoForm.email,
         full_name: podologoForm.full_name,
         phone: podologoForm.phone,
+        role: "employee",
+        company_id: session.companyId,
         is_active: true,
       }]);
 

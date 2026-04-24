@@ -75,14 +75,14 @@ export default function AdminCustomization() {
   }, []);
 
   const checkAuth = async () => {
-    const sessionData = localStorage.getItem("session");
+    const sessionData = localStorage.getItem("podoagenda_session");
     if (!sessionData) {
       router.push("/login");
       return;
     }
 
     const session = JSON.parse(sessionData);
-    if (session.role !== "admin") {
+    if (session.role !== "admin" && session.role !== "owner") {
       router.push("/login");
       return;
     }

@@ -469,6 +469,18 @@ export default function SuperAdmin() {
 
       console.log("✅ Usuario owner creado con role y company_id:", adminUser.id);
 
+      // Insertar en company_users para consistencia multi-tenant
+      const { error: relError } = await supabase.from("company_users").insert([{
+        company_id: company.id,
+        user_id: adminUser.id,
+        role: "owner",
+        status: "active"
+      }]);
+
+      if (relError) {
+        console.warn("⚠️ Error creando relación company_users (no crítico):", relError.message);
+      }
+
       setGeneratedCredentials({
         email: companyForm.admin_email,
         password: adminPassword,
@@ -671,6 +683,20 @@ export default function SuperAdmin() {
         return;
       }
 
+      // Insertar en company_users para usuarios no-superadmin
+      if (userForm.role !== "superadmin" && userForm.company_id) {
+        const { error: relError } = await supabase.from("company_users").insert([{
+          company_id: userForm.company_id,
+          user_id: userId,
+          role: userForm.role,
+          status: "active"
+        }]);
+
+        if (relError) {
+          console.warn("⚠️ Error creando relación company_users:", relError.message);
+        }
+      }
+
       console.log("✅ Usuario creado con role:", userForm.role);
 
       setGeneratedCredentials({
@@ -715,19 +741,41 @@ export default function SuperAdmin() {
 
       console.log("✏️ [SIMPLE] Actualizando usuario...");
 
-      // SIMPLE: Actualización directa en users
+      // Actualización en users
+      const newCompanyId = userForm.role === "superadmin" ? null : userForm.company_id;
       const { error: userError } = await supabase
         .from("users")
         .update({
           full_name: userForm.full_name,
           phone: userForm.phone || null,
-          role: userForm.role, // ← DIRECTO
-          company_id: userForm.role === "superadmin" ? null : userForm.company_id, // ← DIRECTO
+          role: userForm.role,
+          company_id: newCompanyId,
           is_superadmin: userForm.role === "superadmin",
         })
         .eq("id", editingUser.id);
 
       if (userError) throw userError;
+
+      // Sincronizar company_users
+      // Eliminar relaciones anteriores
+      await supabase
+        .from("company_users")
+        .delete()
+        .eq("user_id", editingUser.id);
+
+      // Crear nueva relación si no es superadmin
+      if (userForm.role !== "superadmin" && newCompanyId) {
+        const { error: relError } = await supabase.from("company_users").insert([{
+          company_id: newCompanyId,
+          user_id: editingUser.id,
+          role: userForm.role,
+          status: "active"
+        }]);
+
+        if (relError) {
+          console.warn("⚠️ Error sincronizando company_users:", relError.message);
+        }
+      }
 
       console.log("✅ Usuario actualizado");
 

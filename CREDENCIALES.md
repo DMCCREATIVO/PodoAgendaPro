@@ -4,33 +4,22 @@
 
 El sistema tiene **3 puntos de entrada separados**:
 
-### **1. SuperAdmin - Acceso Global Seguro**
-**URL:** `/superadmin/auth` (exclusiva y oculta)
-- Login simple para SuperAdmin
-- **SIN selector de roles**
-- Acceso total al sistema
-
-### **2. Empresas - Login y Registro Público**
-**URL:** `/auth`
-- **Tab "Iniciar Sesión"** - Para empresas existentes
-- **Tab "Crear Empresa"** - Para nuevas clínicas con selector de planes
-- Registro público con 3 planes disponibles
-
-### **3. Podólogos/Pacientes - Acceso por Empresa**
-**URL:** `/[slug]/auth` (ejemplo: `/centro-podosalud/auth`)
-- Login **CON selector de roles** (Administrador, Podólogo, Paciente)
-- Cada empresa tiene su propia URL personalizada
+### **1. Login Único**
+**URL:** `/login`
+- Punto de entrada único para todos los usuarios
+- SuperAdmins, Admins, Podólogos y Pacientes acceden desde aquí
+- El sistema detecta el rol y redirige al panel correspondiente
 
 ---
 
 ## 👑 SUPERADMIN (Acceso Global)
 
 ### **Cómo Acceder:**
-1. Ir a: `/superadmin/auth`
-2. Verás: Login simple morado (NO hay selector de roles)
-3. Email: `superadmin@example.com`
-4. Contraseña: `PodosPro2024!Super`
-5. Click "Acceder al Sistema"
+1. Ir a: `/login`
+2. Email: `superadmin@example.com`
+3. Contraseña: `PodosPro2024!Super`
+4. Click "Iniciar Sesión"
+5. Sistema detecta `is_superadmin: true`
 6. Redirección automática a `/superadmin`
 
 ### **Panel SuperAdmin:**
@@ -68,13 +57,11 @@ El sistema tiene **3 puntos de entrada separados**:
 ### **Administrador (Owner)**
 
 **Cómo Acceder:**
-1. Ir a: `/centro-podosalud/auth`
-2. Verás: Selector de 3 roles (cards grandes)
-3. Seleccionar: "Administrador"
-4. Email: `admin@centropodosalud.cl`
-5. Contraseña: `Admin123!`
-6. Click "Iniciar Sesión"
-7. Redirección automática a `/admin`
+1. Ir a: `/login`
+2. Email: `admin@centropodosalud.cl`
+3. Contraseña: `Admin123!`
+4. Click "Iniciar Sesión"
+5. Redirección automática a `/admin`
 
 **Panel Admin:**
 - Sidebar azul glassmorphism
@@ -92,12 +79,11 @@ El sistema tiene **3 puntos de entrada separados**:
 ### **Podólogo Principal**
 
 **Cómo Acceder:**
-1. Ir a: `/centro-podosalud/auth`
-2. Seleccionar: "Podólogo"
-3. Email: `dra.martinez@centropodosalud.cl`
-4. Contraseña: `Podo123!`
-5. Click "Iniciar Sesión"
-6. Redirección automática a `/podologo`
+1. Ir a: `/login`
+2. Email: `dra.martinez@centropodosalud.cl`
+3. Contraseña: `Podo123!`
+4. Click "Iniciar Sesión"
+5. Redirección automática a `/podologo`
 
 **Panel Podólogo:**
 - Sidebar verde glassmorphism
@@ -120,12 +106,11 @@ El sistema tiene **3 puntos de entrada separados**:
 ### **Paciente 1**
 
 **Cómo Acceder:**
-1. Ir a: `/centro-podosalud/auth`
-2. Seleccionar: "Paciente"
-3. Email: `juan.perez@email.com`
-4. Contraseña: `Paciente123!`
-5. Click "Iniciar Sesión"
-6. Redirección automática a `/cliente`
+1. Ir a: `/login`
+2. Email: `juan.perez@email.com`
+3. Contraseña: `Paciente123!`
+4. Click "Iniciar Sesión"
+5. Redirección automática a `/cliente`
 
 **Portal Paciente:**
 - Sidebar neutral glassmorphism
@@ -147,35 +132,13 @@ El sistema tiene **3 puntos de entrada separados**:
 
 ## 🆕 CREAR NUEVA EMPRESA
 
-### **Desde Página Pública (`/auth`):**
-1. Ir a `/auth`
-2. Click en tab "Crear Empresa"
-3. Completar formulario:
-   - Nombre completo
-   - Email
-   - Contraseña
-   - Nombre de la clínica
-   - Teléfono
-4. **Seleccionar plan:**
-   - **Starter** - $29/mes (1 podólogo, 100 pacientes)
-   - **Professional** - $79/mes (5 podólogos, ilimitado) [MÁS POPULAR]
-   - **Enterprise** - Custom (ilimitado, multi-sucursal)
-5. Click "Crear Empresa Gratis"
-6. Sistema crea automáticamente:
-   - Usuario owner
-   - Empresa nueva
-   - URL personalizada (slug)
-7. Redirección a `/onboarding`
-8. Completar 3 pasos de configuración inicial
-9. Redirección a `/admin`
-
 ### **Desde SuperAdmin:**
-1. Login como SuperAdmin
+1. Login como SuperAdmin en `/login`
 2. Ir a `/superadmin`
 3. Tab "Empresas"
 4. Click "Crear Empresa"
-5. Completar formulario
-6. Sistema genera empresa con slug único
+5. Completar formulario (nombre, email, admin, plan, etc.)
+6. Sistema genera empresa con slug único + usuario owner + relación company_users
 
 ---
 
@@ -183,52 +146,42 @@ El sistema tiene **3 puntos de entrada separados**:
 
 ### **Flujo 1: SuperAdmin**
 ```
-Paso 1: Ir a /superadmin/auth
-Paso 2: Ver login simple morado (SIN selector de roles)
-Paso 3: Email: superadmin@example.com
-Paso 4: Password: PodosPro2024!Super
-Paso 5: Click "Acceder al Sistema"
-Paso 6: Sistema detecta is_superadmin: true
-Paso 7: Redirección automática → /superadmin
-Paso 8: Panel morado con 5 tabs operativas
+Paso 1: Ir a /login
+Paso 2: Email: superadmin@example.com
+Paso 3: Password: PodosPro2024!Super
+Paso 4: Click "Iniciar Sesión"
+Paso 5: Sistema detecta is_superadmin: true
+Paso 6: Redirección automática → /superadmin
 ```
 
-### **Flujo 2: Login Empresa Existente**
+### **Flujo 2: Login Admin/Owner**
 ```
-Paso 1: Ir a /auth
-Paso 2: Click en tab "Iniciar Sesión"
-Paso 3: Email: admin@centropodosalud.cl
-Paso 4: Password: Admin123!
-Paso 5: Click "Iniciar Sesión"
-Paso 6: Sistema detecta empresa existente
-Paso 7: Redirección automática → /admin
-```
-
-### **Flujo 3: Crear Nueva Empresa**
-```
-Paso 1: Ir a /auth
-Paso 2: Click en tab "Crear Empresa"
-Paso 3: Completar formulario (nombre, email, clínica, etc.)
-Paso 4: Seleccionar plan (Starter/Professional/Enterprise)
-Paso 5: Click "Crear Empresa Gratis"
-Paso 6: Sistema crea usuario + empresa + slug
-Paso 7: Redirección a /onboarding
-Paso 8: Configuración inicial (3 pasos)
-Paso 9: Redirección a /admin
+Paso 1: Ir a /login
+Paso 2: Email: admin@centropodosalud.cl
+Paso 3: Password: Admin123!
+Paso 4: Click "Iniciar Sesión"
+Paso 5: Sistema detecta role: owner/admin
+Paso 6: Redirección automática → /admin
 ```
 
-### **Flujo 4: Login Podólogo/Paciente**
+### **Flujo 3: Login Podólogo**
 ```
-Paso 1: Ir a /centro-podosalud/auth
-Paso 2: Ver selector de 3 roles
-Paso 3: Seleccionar rol (Administrador/Podólogo/Paciente)
-Paso 4: Email + Password
-Paso 5: Click "Iniciar Sesión"
-Paso 6: Sistema detecta role
-Paso 7: Redirección según rol:
-  - Admin → /admin
-  - Podólogo → /podologo
-  - Paciente → /cliente
+Paso 1: Ir a /login
+Paso 2: Email: dra.martinez@centropodosalud.cl
+Paso 3: Password: Podo123!
+Paso 4: Click "Iniciar Sesión"
+Paso 5: Sistema detecta role: employee
+Paso 6: Redirección automática → /podologo
+```
+
+### **Flujo 4: Login Paciente**
+```
+Paso 1: Ir a /login
+Paso 2: Email: juan.perez@email.com
+Paso 3: Password: Paciente123!
+Paso 4: Click "Iniciar Sesión"
+Paso 5: Sistema detecta role: patient
+Paso 6: Redirección automática → /cliente
 ```
 
 ---
@@ -238,9 +191,9 @@ Paso 7: Redirección según rol:
 El sistema redirige automáticamente según tu rol:
 
 ### **Si NO estás autenticado:**
-- Intentas ir a `/admin` → Redirige a `/auth`
-- Intentas ir a `/podologo` → Redirige a `/auth`
-- Intentas ir a `/superadmin` → Redirige a `/superadmin/auth`
+- Intentas ir a `/admin` → Redirige a `/login`
+- Intentas ir a `/podologo` → Redirige a `/login`
+- Intentas ir a `/superadmin` → Redirige a `/login`
 
 ### **Si eres SuperAdmin:**
 - Intentas ir a `/admin` → Redirige a `/superadmin`
@@ -268,11 +221,10 @@ El sistema redirige automáticamente según tu rol:
 
 ### **"No puedo acceder al panel SuperAdmin"**
 **Solución:**
-1. Verifica que estés usando: `/superadmin/auth` (NO `/auth`)
+1. Ir a: `/login`
 2. Email exacto: `superadmin@example.com`
 3. Password exacto: `PodosPro2024!Super`
-4. Si ves selector de roles = estás en la URL incorrecta
-5. Limpia el localStorage: Consola → `localStorage.clear()` → Enter → F5
+4. Limpia el localStorage si hay problemas: Consola → `localStorage.clear()` → Enter → F5
 
 ### **"Me redirige automáticamente"**
 **Esto es normal.** El sistema detecta tu rol y te lleva al panel correcto:
@@ -281,15 +233,8 @@ El sistema redirige automáticamente según tu rol:
 - Podólogo → `/podologo`
 - Paciente → `/cliente`
 
-### **"No veo el tab de Login en /auth"**
-**Solución:**
-1. Refresca la página
-2. Verás 2 tabs: "Iniciar Sesión" y "Crear Empresa"
-3. Click en "Iniciar Sesión" para empresas existentes
-
-### **"¿Dónde selecciono el plan?"**
-El selector de planes aparece en el tab "Crear Empresa" de `/auth`.
-Hay 3 opciones: Starter, Professional, Enterprise.
+### **"¿Cómo creo una nueva empresa?"**
+Las empresas se crean desde el panel SuperAdmin → Tab "Empresas" → "Crear Empresa".
 
 ### **"Error 500 - Recursión infinita"**
 **Solución:**
@@ -396,7 +341,7 @@ console.log(data);
 
 ---
 
-**Última actualización:** 2026-04-23
+**Última actualización:** 2026-04-24
 **Versión del Sistema:** 1.0.0
 **Estado:** ✅ Sistema Completamente Operativo
 **Branding:** PodoAgenda Pro
