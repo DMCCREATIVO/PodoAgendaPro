@@ -31,6 +31,11 @@ position: 8
 - ✅ Personalización por empresa (colores, logo)
 - ✅ Tab Configuración global
 - ✅ Diseño premium y profesional
+- ✅ **INTEGRACIONES GLOBALES:** WhatsApp, Mercado Pago, Stripe
+- ✅ **PLANES PERSONALIZADOS:** Plan custom/ilimitado por empresa
+- ✅ **UPLOAD DE LOGOS:** Supabase Storage bucket configurado
+- ✅ **GESTIÓN DE CONTRASEÑAS:** Editar/generar contraseñas admin
+- ✅ **INTEGRACIONES POR EMPRESA:** Heredar global o usar propias
 
 **ARQUITECTURA:**
 - Sistema de autenticación robusto (sin Supabase Auth)
@@ -60,6 +65,11 @@ position: 8
 - [x] Contraseñas automáticas y modal de credenciales
 - [x] Personalización por empresa (colores)
 - [x] Dashboard con KPIs reales (MRR, empresas activas, usuarios)
+- [x] Integraciones Globales (WhatsApp, Mercado Pago, Stripe)
+- [x] Planes Personalizados/Ilimitados
+- [x] Upload de logos (Supabase Storage)
+- [x] Gestión de contraseñas admin
+- [x] Integraciones por empresa (global/custom)
 - [ ] Desarrollar Panel Admin completo
 - [ ] Desarrollar Panel Podólogo (CORE clínico)
 - [ ] Desarrollar Portal Paciente
@@ -75,3 +85,6 @@ position: 8
 - ✅ Sistema de planes implementado
 - ✅ Contraseñas automáticas y credenciales copiables
 - ✅ Personalización por empresa
+- ✅ Integraciones globales configurables
+- ✅ Upload de logos funcional
+- ✅ Planes personalizados/ilimitados disponibles
