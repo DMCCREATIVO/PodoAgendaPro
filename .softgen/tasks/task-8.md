@@ -77,9 +77,15 @@ position: 8
 - [x] Agenda completa
 - [x] Cobros con filtros
 - [x] Configuración con tema personalizado aplicado
-- [ ] Desarrollar Panel Podólogo (CORE clínico)
-- [ ] Desarrollar Portal Paciente
-- [ ] Conectar paneles con datos reales de la BD
+- [x] Desarrollar Panel Podólogo (CORE clínico)
+- [x] Mi Día con timer y próxima cita
+- [x] ATENCIÓN CLÍNICA - Ficha podológica completa (10 campos)
+- [x] Sistema de cobro integrado
+- [x] Mis Pacientes con búsqueda
+- [ ] Desarrollar Portal Paciente (Mis Citas, Historial, Pagos)
+- [ ] Crear Landing Pública (Hero, Servicios, Podólogos, Testimonios)
+- [ ] Construir Sistema de Reservas (Stepper 5 pasos)
+- [ ] Página Disponibilidad por Podólogo (Marketing + Agenda)
 
 ## Acceptance
 - ✅ Usuario puede hacer login con cualquier rol demo
